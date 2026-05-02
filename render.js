@@ -3692,21 +3692,23 @@ function drawStatsScreen(){
   ctx.strokeStyle='rgba(74,222,128,0.5)';ctx.lineWidth=1.5;rr(CX,CY,CW,cardH,14);ctx.stroke();
   ctx.restore();
 
-  // Header
-  ctx.save();ctx.textAlign='center';ctx.textBaseline='middle';
-  ctx.font="900 18px 'Orbitron',impact,sans-serif";
-  ctx.shadowColor='#4ade80';ctx.shadowBlur=14;ctx.fillStyle='#4ade80';
-  ctx.fillText('YOUR STATS',W/2,CY+26);
-  ctx.shadowBlur=0;ctx.font="600 7.5px 'Rajdhani',sans-serif";
-  ctx.fillStyle='rgba(148,163,184,0.65)';
+  // Logo at top of card
+  ctx.save();
   if(window._LANE_HAVOC_LOGO&&window._LANE_HAVOC_LOGO.complete&&window._LANE_HAVOC_LOGO.naturalWidth>0){
-    ctx.drawImage(window._LANE_HAVOC_LOGO,W/2-120,CY+14,240,120);
+    ctx.drawImage(window._LANE_HAVOC_LOGO,W/2-100,CY+8,200,80);
   }
   ctx.restore();
 
+  // Title — below logo, no overlap
+  ctx.save();ctx.textAlign='center';ctx.textBaseline='middle';
+  ctx.font="900 16px 'Orbitron',impact,sans-serif";
+  ctx.shadowColor='#4ade80';ctx.shadowBlur=14;ctx.fillStyle='#4ade80';
+  ctx.fillText('YOUR STATS',W/2,CY+100);
+  ctx.shadowBlur=0;ctx.restore();
+
   // Divider
   ctx.save();ctx.strokeStyle='rgba(74,222,128,0.25)';ctx.lineWidth=1;
-  ctx.beginPath();ctx.moveTo(CX+16,CY+54);ctx.lineTo(CX+CW-16,CY+54);ctx.stroke();
+  ctx.beginPath();ctx.moveTo(CX+16,CY+114);ctx.lineTo(CX+CW-16,CY+114);ctx.stroke();
   ctx.restore();
 
   // Stats rows
@@ -3718,7 +3720,7 @@ function drawStatsScreen(){
     ['💨 Near-Misses',   statTotalMisses,    '#f97316'],
     ['⚡ Best Streak',    statBestCombo+'×',  '#ef4444'],
   ];
-  const rowH=54, startY=CY+72;
+  const rowH=50, startY=CY+122;
   srows.forEach(([label,val,col],i)=>{
     const ry=startY+i*rowH;
     ctx.save();
@@ -4506,6 +4508,65 @@ function _drawLegendIcon(type,cx,cy,sz){
       ctx.fillRect(cx-sz*0.3,cy-sz*0.1,sz*0.6,sz*0.14);ctx.restore();
       ctx.fillStyle='#333';ctx.fillRect(cx-sz*0.55,cy+sz*0.55,sz*1.1,sz*0.18);
       break;}
+    case 'oil': { // iridescent oil slick ellipse
+      const oilG=ctx.createRadialGradient(cx-sz*0.15,cy-sz*0.1,sz*0.05,cx,cy,sz*0.88);
+      oilG.addColorStop(0,'#c084fc');oilG.addColorStop(0.35,'#818cf8');
+      oilG.addColorStop(0.65,'#34d399');oilG.addColorStop(1,'#60a5fa');
+      ctx.fillStyle=oilG;
+      ctx.beginPath();ctx.ellipse(cx,cy,sz*0.88,sz*0.52,0,0,Math.PI*2);ctx.fill();
+      ctx.strokeStyle='rgba(192,132,252,0.55)';ctx.lineWidth=sz*0.12;
+      ctx.beginPath();ctx.ellipse(cx,cy,sz*0.88,sz*0.52,0,0,Math.PI*2);ctx.stroke();
+      ctx.save();ctx.globalAlpha=0.35;ctx.strokeStyle='#fff';ctx.lineWidth=sz*0.06;
+      ctx.beginPath();ctx.ellipse(cx-sz*0.18,cy-sz*0.08,sz*0.3,sz*0.16,-0.3,0,Math.PI*2);ctx.stroke();
+      ctx.restore();
+      break;}
+    case 'truck': { // top-down semi truck icon
+      ctx.fillStyle='#374151';rr(cx-sz*0.48,cy-sz*0.45,sz*0.96,sz*1.1,sz*0.1);ctx.fill();
+      ctx.strokeStyle='#6b7280';ctx.lineWidth=sz*0.08;rr(cx-sz*0.48,cy-sz*0.45,sz*0.96,sz*1.1,sz*0.1);ctx.stroke();
+      ctx.fillStyle='#1e2433';rr(cx-sz*0.42,cy-sz*0.88,sz*0.84,sz*0.48,sz*0.1);ctx.fill();
+      const wsG2=ctx.createLinearGradient(0,cy-sz*0.83,0,cy-sz*0.52);
+      wsG2.addColorStop(0,'rgba(155,215,245,0.85)');wsG2.addColorStop(1,'rgba(70,145,205,0.5)');
+      ctx.fillStyle=wsG2;rr(cx-sz*0.28,cy-sz*0.82,sz*0.56,sz*0.26,sz*0.06);ctx.fill();
+      ctx.fillStyle='#c8e8ff';ctx.shadowColor='#c8e8ff';ctx.shadowBlur=4;
+      ctx.fillRect(cx-sz*0.42,cy-sz*0.9,sz*0.14,sz*0.05);ctx.fillRect(cx+sz*0.28,cy-sz*0.9,sz*0.14,sz*0.05);
+      ctx.shadowBlur=0;
+      ctx.fillStyle='#ef4444';ctx.shadowColor='#ef4444';ctx.shadowBlur=5;
+      ctx.font=`bold ${sz*0.48}px 'Orbitron',sans-serif`;
+      ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText('2×',cx,cy+sz*0.28);
+      ctx.shadowBlur=0;
+      break;}
+    case 'magnet': { // U-shaped horseshoe magnet
+      ctx.save();
+      ctx.strokeStyle='#ef3349';ctx.lineWidth=sz*0.28;ctx.shadowColor='#06b6d4';ctx.shadowBlur=8;
+      ctx.beginPath();ctx.arc(cx,cy-sz*0.05,sz*0.52,Math.PI,0);ctx.stroke();
+      ctx.fillStyle='#ef3349';
+      ctx.fillRect(cx-sz*0.66,cy-sz*0.05,sz*0.28,sz*0.7);
+      ctx.fillRect(cx+sz*0.38,cy-sz*0.05,sz*0.28,sz*0.7);
+      ctx.fillStyle='#e2e8f0';ctx.shadowColor='#e2e8f0';ctx.shadowBlur=5;
+      ctx.fillRect(cx-sz*0.66,cy-sz*0.05,sz*0.28,sz*0.24);
+      ctx.fillRect(cx+sz*0.38,cy-sz*0.05,sz*0.28,sz*0.24);
+      ctx.shadowBlur=0;
+      ctx.restore();
+      break;}
+    case 'gun': { // side-profile gun silhouette
+      ctx.save();
+      ctx.shadowColor='rgba(255,224,96,0.6)';ctx.shadowBlur=6;
+      const gunSlG=ctx.createLinearGradient(cx-sz*0.58,cy-sz*0.22,cx-sz*0.58,cy+sz*0.14);
+      gunSlG.addColorStop(0,'#9098a8');gunSlG.addColorStop(1,'#484858');
+      ctx.fillStyle=gunSlG;rr(cx-sz*0.58,cy-sz*0.22,sz*1.05,sz*0.34,sz*0.07);ctx.fill();
+      ctx.fillStyle='#d4a830';ctx.shadowColor='rgba(255,200,40,0.7)';ctx.shadowBlur=4;
+      rr(cx-sz*0.82,cy-sz*0.12,sz*0.28,sz*0.12,sz*0.04);ctx.fill();
+      ctx.shadowBlur=0;
+      ctx.fillStyle='#484858';
+      ctx.save();ctx.translate(cx+sz*0.3,cy);ctx.rotate(0.1);
+      ctx.fillRect(-sz*0.13,0,sz*0.2,sz*0.48);ctx.restore();
+      ctx.strokeStyle='#6a6a7a';ctx.lineWidth=sz*0.09;ctx.lineCap='round';
+      ctx.beginPath();ctx.moveTo(cx+sz*0.08,cy);ctx.quadraticCurveTo(cx+sz*0.22,cy+sz*0.24,cx+sz*0.36,cy+sz*0.08);ctx.stroke();
+      ctx.fillStyle='#ffffff';ctx.shadowColor='#fffce0';ctx.shadowBlur=3;
+      ctx.fillRect(cx+sz*0.36,cy-sz*0.3,sz*0.05,sz*0.07);ctx.shadowBlur=0;
+      ctx.strokeStyle='#c0c4d0';ctx.lineWidth=sz*0.07;rr(cx-sz*0.58,cy-sz*0.22,sz*1.05,sz*0.34,sz*0.07);ctx.stroke();
+      ctx.restore();
+      break;}
   }
   ctx.restore();
 }
@@ -4575,18 +4636,22 @@ function drawIntro(){
 
   // ── Legend (scrollable) ──
   const items=[
-    {type:'enemy',    name:'ENEMY CAR',    desc:'Oncoming red car — dodge it'},
-    {type:'police',   name:'POLICE BOSS',  desc:'Stage 5 pursuit — survive 8s'},
-    {type:'cattle',   name:'BULL / COW',   desc:'Jump or dodge crossing animals'},
+    {type:'enemy',    name:'ENEMY CAR',    desc:'Oncoming red car — dodge left or right'},
+    {type:'police',   name:'POLICE BOSS',  desc:'Pursuit car every 5 stages — survive 8s'},
+    {type:'cattle',   name:'BULL / COW',   desc:'Crossing animal — jump over or switch lane'},
     {type:'stone',    name:'ROCK',         desc:'Blocks road — jump or switch lane'},
-    {type:'manhole',  name:'MANHOLE',      desc:'Orange cover — avoid or jump'},
-    {type:'roadwork', name:'ROAD WORK',    desc:'Closes lane 4 — stay left'},
+    {type:'manhole',  name:'MANHOLE',      desc:'Orange cover — avoid or jump over'},
     {type:'speedbump',name:'SPEED BUMP',   desc:'Safe to hit — slows you briefly'},
-    {type:'brokencar',name:'BROKEN CAR',   desc:'Spans 2 lanes — plan ahead'},
-    {type:'nitro',    name:'NITRO',        desc:'2× speed boost for ~3s'},
-    {type:'ghost',    name:'GHOST',        desc:'Phase through cars, obstacles & cattle for 3s'},
-    {type:'shield',   name:'SHIELD',       desc:'Absorbs one crash — earns you +30 pts'},
-    {type:'coin',     name:'COIN',         desc:'Collect to spend in the Shop'},
+    {type:'brokencar',name:'BROKEN CAR',   desc:'Wreck spans 2 lanes — plan ahead'},
+    {type:'truck',    name:'TRUCK',        desc:'2-hit obstacle — tank it twice or dodge (Stage 3+)'},
+    {type:'oil',      name:'OIL SLICK',    desc:'Locks lane-switching for ~2s (Stage 6+)'},
+    {type:'roadwork', name:'ROAD WORK',    desc:'Cone closes lane 4 — stay in lanes 1–3'},
+    {type:'nitro',    name:'NITRO',        desc:'2× score boost ~3s — tap NITRO button to fire'},
+    {type:'ghost',    name:'GHOST',        desc:'Phase through all hazards for 3s'},
+    {type:'shield',   name:'SHIELD',       desc:'Absorbs one crash — earns +30 pts'},
+    {type:'magnet',   name:'MAGNET',       desc:'Auto-pulls all nearby coins to you'},
+    {type:'gun',      name:'MACHINE GUN',  desc:'Pick up then tap FIRE to shoot enemy cars'},
+    {type:'coin',     name:'COIN',         desc:'Collect coins — spend them in the Shop'},
   ];
 
   // Larger rows for better readability
@@ -4601,7 +4666,8 @@ function drawIntro(){
   const colIcon=CX+26, colName=CX+58, colDesc=CX+58;
   const nameCol={enemy:'#ef4444',police:'#93c5fd',cattle:'#86efac',stone:'#94a3b8',
     manhole:'#fb923c',roadwork:'#fbbf24',speedbump:'#fde68a',
-    brokencar:'#f97316',nitro:'#fbbf24',ghost:'#e2e8f0',shield:'#3b82f6',coin:'#fbbf24'};
+    brokencar:'#f97316',nitro:'#fbbf24',ghost:'#e2e8f0',shield:'#3b82f6',coin:'#fbbf24',
+    oil:'#c084fc',truck:'#6b7280',magnet:'#06b6d4',gun:'#fef08a'};
 
   // Clip to scrollable area
   ctx.save();

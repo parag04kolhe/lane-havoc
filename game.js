@@ -509,7 +509,6 @@ async function _llOpenLeaderboard(){
       const me=lbScores.find(s=>s.name===playerName);
       lbMyRank=me?me.rank:0;
     }
-    if(lbScores.length===0&&lbError==='') lbError='';
   }catch(e){
     lbError='Could not connect. Try again later.';
   }
@@ -1028,7 +1027,8 @@ document.addEventListener('keydown',e=>{
   if(e.key==='ArrowLeft')doLeft();if(e.key==='ArrowRight')doRight();
   if(e.key==='ArrowUp')doJump();if(e.key==='ArrowDown')doDown();
   if(e.key==='Enter')doGunFire();
-  if(e.key===' ')doSelect();
+  // Spacebar: fire nitro during gameplay, otherwise confirm/select in menus
+  if(e.key===' '){if(gst===ST.PLAYING||gst===ST.RESPAWNING)doNitroFire();else doSelect();}
   if(e.key==='s'||e.key==='S')doShop();
   if((e.key==='p'||e.key==='P')&&(gst===ST.PLAYING||gst===ST.RESPAWNING)){gamePaused=true;const pb=document.getElementById('pauseBtn');if(pb)pb.textContent='▶';}
   if(e.key==='Escape'&&(gst===ST.SHOP||gst===ST.HOWTO||gst===ST.STATS)){gst===ST.SHOP?gst=preShop:gst=ST.SPLASH;}
@@ -1225,11 +1225,19 @@ canvas.addEventListener('touchmove', e=>{
   // Object guide scroll
   if(gst===ST.INTRO){
     const dy=(t.clientY-tsy)*(H/canvas.getBoundingClientRect().height);
-    introScrollY=clamp(introScrollY-dy*0.6,0,Math.max(0,12*44-360));
+    introScrollY=clamp(introScrollY-dy*0.6,0,Math.max(0,16*44-300));
     tsx=t.clientX;tsy=t.clientY;
   }
   e.preventDefault(); // scoped: prevents scroll while finger is on canvas
   e.stopPropagation();
+},{passive:false});
+
+// ── Mouse wheel scroll for Object Guide (desktop) ────────────────────────────
+canvas.addEventListener('wheel', e=>{
+  if(gst===ST.INTRO){
+    e.preventDefault();
+    introScrollY=clamp(introScrollY+e.deltaY*0.5,0,Math.max(0,16*44-300));
+  }
 },{passive:false});
 
 canvas.addEventListener('touchend', e=>{
