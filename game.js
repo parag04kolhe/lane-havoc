@@ -433,17 +433,19 @@ function getSkin() {return SKINS.find(s=>s.id===equippedSkin)||SKINS[0];}
 function getTrail(){return TRAILS.find(t=>t.id===equippedTrail)||TRAILS[0];}
 
 /* ══════════════════════════════════════════════
-   LOOTLOCKER — Global Leaderboard Integration
-   Proxied through Netlify Functions (no CORS).
-   Leaderboard key: global_high_scores
+   SUPABASE — Global Leaderboard Integration
+   Direct REST API — no proxy or serverless functions needed.
 ══════════════════════════════════════════════ */
-const LL_FN     = '/.netlify/functions'; // Netlify proxy — no CORS issues
-const LL_LB_KEY = 'global_high_scores';
+const _SB_URL = 'https://zedrsbmkktyaecszlesk.supabase.co';
+const _SB_KEY = 'sb_publishable_HBa4vm_39EvSqvmbeU7x7A_LIq_GpHB';
+const _SB_HDR = {
+  'Content-Type' : 'application/json',
+  'apikey'       : _SB_KEY,
+  'Authorization': 'Bearer ' + _SB_KEY
+};
 
 let playerName      = loadLS('rr_player_name',''); // saved display name
-let _llToken        = '';                           // session token
-let _llIdentifier   = loadLS('rr_ll_id','');        // stable guest id
-let _llPendingScore = 0;                            // score waiting for name entry
+let _llPendingScore = 0;                           // score waiting for name entry
 
 // Leaderboard screen state
 let lbScores  = [];  // [{rank, score, name}]
@@ -451,82 +453,36 @@ let lbLoading = false;
 let lbError   = '';
 let lbMyRank  = 0;
 
-function _llGenId(){
-  return Math.random().toString(36).substr(2,10)+Date.now().toString(36);
-}
-
-async function _llGetSession(){
-  try{
-    if(!_llIdentifier){_llIdentifier=_llGenId();saveLS('rr_ll_id',_llIdentifier);}
-    const r=await fetch(LL_FN+'/ll-session',{
-      method :'POST',
-      headers:{'Content-Type':'application/json'},
-      body   :JSON.stringify({identifier:_llIdentifier})
-    });
-    const d=await r.json();
-    console.log('[LL] session status:',r.status,'body:',d);
-    if(!r.ok||!d.session_token){
-      console.warn('[LL] session failed:',d.message||d.error||JSON.stringify(d));
-      _llToken='';return false;
-    }
-    _llToken=d.session_token;
-    return true;
-  }catch(e){console.error('[LL] session error:',e);return false;}
-}
-
-async function _llSetPlayerName(name){
-  if(!_llToken)return;
-  try{
-    const r=await fetch(LL_FN+'/ll-setname',{
-      method :'POST',
-      headers:{'Content-Type':'application/json'},
-      body   :JSON.stringify({session_token:_llToken,name})
-    });
-    const d=await r.json();
-    console.log('[LL] setName status:',r.status,'body:',d);
-  }catch(e){console.error('[LL] setName error:',e);}
-}
-
-async function _llSubmit(score){
-  if(!_llToken)return;
-  try{
-    const r=await fetch(LL_FN+'/ll-submit',{
-      method :'POST',
-      headers:{'Content-Type':'application/json'},
-      body   :JSON.stringify({session_token:_llToken,score})
-    });
-    const d=await r.json();
-    console.log('[LL] submit status:',r.status,'body:',d);
-  }catch(e){console.error('[LL] submit error:',e);}
-}
-
+// Fetch top 20 scores ordered by score descending
 async function _llFetchScores(){
-  if(!_llToken)return[];
   try{
-    const r=await fetch(LL_FN+'/ll-fetch',{
+    const r=await fetch(
+      _SB_URL+'/rest/v1/scores?select=name,score&order=score.desc&limit=20',
+      {method:'GET', headers:_SB_HDR}
+    );
+    if(!r.ok){console.warn('[SB] fetch failed:',r.status);return[];}
+    const rows=await r.json();
+    return rows.map((row,i)=>({rank:i+1, score:row.score, name:row.name||'Anonymous'}));
+  }catch(e){console.error('[SB] fetch error:',e);return[];}
+}
+
+// Insert a new score row
+async function _llSubmit(name,score){
+  try{
+    const r=await fetch(_SB_URL+'/rest/v1/scores',{
       method :'POST',
-      headers:{'Content-Type':'application/json'},
-      body   :JSON.stringify({session_token:_llToken})
+      headers:{..._SB_HDR, 'Prefer':'return=minimal'},
+      body   :JSON.stringify({name, score})
     });
-    const d=await r.json();
-    console.log('[LL] fetch status:',r.status,'items:',(d.items||[]).length);
-    if(!r.ok){console.warn('[LL] fetch failed:',d.message||d.error);return[];}
-    return(d.items||[]).map(it=>({
-      rank :it.rank,
-      score:it.score,
-      name :(it.player&&it.player.name)||'Anonymous'
-    }));
-  }catch(e){console.error('[LL] fetch error:',e);return[];}
+    console.log('[SB] submit status:',r.status);
+  }catch(e){console.error('[SB] submit error:',e);}
 }
 
 // Called automatically on every game over
 async function _llHandleGameOver(finalScore){
   if(finalScore<=0)return;
   if(playerName){
-    const ok=await _llGetSession();
-    if(!ok)return;
-    await _llSetPlayerName(playerName);
-    await _llSubmit(finalScore);
+    await _llSubmit(playerName, finalScore);
   }else{
     _llPendingScore=finalScore;
     const overlay=document.getElementById('nameOverlay');
@@ -540,24 +496,21 @@ async function _llSubmitWithName(name,score){
   saveLS('rr_player_name',playerName);
   const overlay=document.getElementById('nameOverlay');
   if(overlay)overlay.style.display='none';
-  const ok=await _llGetSession();
-  if(!ok)return;
-  await _llSetPlayerName(name);
-  await _llSubmit(score);
+  await _llSubmit(name, score);
 }
 
 // Open the leaderboard screen and fetch scores
 async function _llOpenLeaderboard(){
   gst=ST.LEADERBOARD;
   lbScores=[];lbLoading=true;lbError='';lbMyRank=0;
-  const ok=await _llGetSession();
-  if(ok){
+  try{
     lbScores=await _llFetchScores();
     if(playerName){
       const me=lbScores.find(s=>s.name===playerName);
       lbMyRank=me?me.rank:0;
     }
-  }else{
+    if(lbScores.length===0&&lbError==='') lbError='';
+  }catch(e){
     lbError='Could not connect. Try again later.';
   }
   lbLoading=false;
