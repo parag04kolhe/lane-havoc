@@ -1,0 +1,703 @@
+  *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
+  html{
+    background:#07080f;
+    height:100%;height:100dvh;
+    overflow:hidden;
+    overscroll-behavior:none;
+    touch-action:none;
+  }
+  body{
+    background:#07080f;
+    display:flex;flex-direction:column;justify-content:center;align-items:center;
+    width:100%;height:100%;height:100dvh;
+    overflow:hidden;
+    overscroll-behavior:none;
+    touch-action:none;
+    position:fixed;top:0;left:0;
+    font-family:-apple-system,'SF Pro Display','Segoe UI',system-ui,sans-serif;
+    -webkit-font-smoothing:antialiased;
+  }
+  /* ── Game container ── */
+  /* Mobile (≤768px): fills the full screen edge to edge */
+  #game-container{
+    position:fixed;
+    top:0;left:0;
+    width:100vw;height:100dvh;
+    overflow:hidden;
+  }
+  #wrap{
+    position:relative;
+    width:100%;height:100%;
+    user-select:none;-webkit-user-select:none;
+  }
+  /* NOTE: All buttons are direct children of #game-container so
+     Android Chrome delivers touch events to them reliably. */
+  canvas{
+    display:block;
+    touch-action:none;
+    /* Mobile: fill the container — adapts dynamically as browser chrome shows/hides */
+    width:100%;height:100%;
+    border-radius:0;
+  }
+  /* ── Desktop (≥769px): restore classic card view ── */
+  @media(min-width:769px){
+    #game-container{
+      position:relative;
+      flex-shrink:0;
+      width:auto;height:auto;
+      overflow:visible;
+    }
+    #wrap{
+      width:auto;height:auto;
+    }
+    canvas{
+      width:auto;height:auto;
+      border-radius:12px;
+      box-shadow:0 0 0 1px rgba(255,255,255,0.06),
+                 0 8px 32px rgba(0,0,0,0.8),
+                 0 0 60px rgba(0,200,100,0.05);
+    }
+  }
+  #hud{
+    position:absolute;top:0;left:0;right:0;
+    padding:7px 8px 0 60px;
+    display:flex;justify-content:space-evenly;align-items:center;
+    pointer-events:none;gap:0;
+    transition:opacity 0.3s ease;
+  }
+  .hb{
+    background:rgba(8,10,18,0.82);
+    border:1px solid rgba(255,255,255,0.12);
+    border-radius:8px;padding:4px 8px;
+    color:#e2e8f0;font-size:11px;font-weight:700;
+    letter-spacing:0.6px;white-space:nowrap;
+    -webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px);
+    text-shadow:0 1px 3px rgba(0,0,0,0.8);
+    display:flex;align-items:center;gap:3px;
+  }
+  .hb span{color:#facc15;}
+  /* Score circle — absolutely positioned below the exit button (top-left column) */
+  #scorebox{
+    width:44px;height:44px;
+    background:rgba(8,10,18,0.88);
+    border:2px solid rgba(0,230,118,0.55);
+    border-radius:50%;
+    display:flex;align-items:center;justify-content:center;
+    -webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px);
+    box-shadow:0 0 12px rgba(0,230,118,0.18),inset 0 0 8px rgba(0,230,118,0.06);
+    padding:0;flex-shrink:0;
+    position:absolute;
+    left:8px;top:48px;
+    transition:border-color 0.25s,box-shadow 0.25s;
+  }
+  #sval{
+    color:#00e676;font-size:10px;font-weight:900;
+    letter-spacing:0;text-align:center;line-height:1;
+    text-shadow:0 0 8px rgba(0,230,118,0.7);
+    font-family:'Orbitron',monospace;
+    max-width:38px;overflow:hidden;
+  }
+
+  /* ── Combo multiplier badge — sits below the score circle ── */
+  #combobadge{
+    position:absolute;
+    bottom:-11px;
+    left:50%;
+    transform:translateX(-50%);
+    font-size:8px;font-weight:900;
+    font-family:'Orbitron',monospace;
+    padding:1px 5px;
+    border-radius:5px;
+    background:rgba(6,8,18,0.94);
+    border:1px solid transparent;
+    white-space:nowrap;
+    pointer-events:none;
+    line-height:1.4;
+    display:none;
+    transition:color 0.2s,border-color 0.2s,box-shadow 0.2s;
+  }
+  #combobadge.combo-active{ display:block; }
+  #combobadge.combo-x2{
+    color:#facc15;
+    border-color:rgba(250,204,21,0.70);
+    box-shadow:0 0 6px rgba(250,204,21,0.30);
+  }
+  #combobadge.combo-x3{
+    color:#fb923c;
+    border-color:rgba(251,146,60,0.70);
+    box-shadow:0 0 6px rgba(251,146,60,0.30);
+  }
+  #combobadge.combo-x4{
+    color:#ef4444;
+    border-color:rgba(239,68,68,0.80);
+    box-shadow:0 0 8px rgba(239,68,68,0.45);
+    animation:combo-badge-pulse 0.55s ease-in-out infinite alternate;
+  }
+  @keyframes combo-badge-pulse{
+    from{box-shadow:0 0 6px rgba(239,68,68,0.35);}
+    to  {box-shadow:0 0 14px rgba(239,68,68,0.80);}
+  }
+
+  /* ── Score circle glow — shifts colour with combo tier ── */
+  #scorebox.combo-glow-x2{
+    border-color:rgba(250,204,21,0.80);
+    box-shadow:0 0 14px rgba(250,204,21,0.35),inset 0 0 8px rgba(250,204,21,0.08);
+  }
+  #scorebox.combo-glow-x3{
+    border-color:rgba(251,146,60,0.80);
+    box-shadow:0 0 16px rgba(251,146,60,0.40),inset 0 0 8px rgba(251,146,60,0.10);
+  }
+  #scorebox.combo-glow-x4{
+    border-color:rgba(239,68,68,0.90);
+    box-shadow:0 0 20px rgba(239,68,68,0.55),inset 0 0 10px rgba(239,68,68,0.14);
+    animation:combo-circle-pulse 0.55s ease-in-out infinite alternate;
+  }
+  @keyframes combo-circle-pulse{
+    from{box-shadow:0 0 14px rgba(239,68,68,0.40);}
+    to  {box-shadow:0 0 28px rgba(239,68,68,0.80);}
+  }
+
+  #coinbox{border-color:rgba(250,204,21,0.35);}
+  #coinbox #cval{color:#facc15;font-family:'Orbitron',monospace;font-size:10px;font-weight:900;}
+  #lbox{border-color:rgba(220,50,50,0.35);padding:3px 6px;}
+  #distbox{border-color:rgba(100,180,255,0.25);}
+  #distbox #dval{color:#93c5fd;font-family:'Orbitron',monospace;font-size:10px;font-weight:900;}
+  #distbox .dist-unit{color:#64748b;font-size:8px;font-family:'Orbitron',monospace;margin-left:1px;}
+  #jbar{
+    position:absolute;
+    bottom:max(78px, calc(env(safe-area-inset-bottom,0px) + 78px));
+    left:8px;
+    display:flex;flex-direction:column;align-items:center;gap:5px;
+    background:rgba(8,10,18,0.80);
+    border:1px solid rgba(255,255,255,0.10);
+    border-radius:14px;padding:7px 6px;
+    pointer-events:none;
+    -webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px);
+    transition:opacity 0.3s ease;
+  }
+  #jlbl{
+    color:#64748b;font-size:9px;letter-spacing:2px;font-weight:700;text-transform:uppercase;
+    font-family:'Orbitron',monospace;
+    writing-mode:vertical-rl;transform:rotate(180deg);
+    white-space:nowrap;line-height:1;
+  }
+  #jtrack{
+    width:4px;height:56px;
+    background:#1e293b;border-radius:2px;overflow:hidden;
+    position:relative;
+  }
+  #jfill{
+    position:absolute;bottom:0;left:0;right:0;
+    height:100%;width:100%;
+    background:#00e676;border-radius:2px;
+    -webkit-transition:background 0.1s;transition:background 0.1s;
+  }
+  .score-pop{animation:score-pop 0.22s ease-out;}
+  @keyframes score-pop{
+    0%{transform:scale(1.0);color:#facc15;}
+    45%{transform:scale(1.45);color:#fb923c;}
+    100%{transform:scale(1.0);color:#facc15;}
+  }
+
+  /* ── Coin HUD pop — fires on every single coin collected ── */
+  .coin-pop{animation:coin-pop 0.20s ease-out;}
+  @keyframes coin-pop{
+    0%  {transform:scale(1.0);}
+    50% {transform:scale(1.25);}
+    100%{transform:scale(1.0);}
+  }
+
+  /* ── Coin icon in HUD — gold disc matching road coins ── */
+  #cicon{
+    display:flex;align-items:center;justify-content:center;
+    width:14px;height:14px;flex-shrink:0;
+    border-radius:50%;
+    background:radial-gradient(circle at 35% 35%, #fff8d0 0%, #f59e0b 38%, #b45309 75%, #7c2d00 100%);
+    box-shadow:0 0 6px rgba(251,191,36,0.70), 0 0 2px rgba(245,158,11,0.5);
+    font-size:8px;font-weight:900;
+    color:#92400e;
+    font-family:'Orbitron',monospace;
+    line-height:1;text-shadow:none;
+  }
+
+  /* ── Coin HUD glow — fires on #coinbox at GODLIKE milestone (~1s orange pulse) ── */
+  .coin-glow{animation:coin-glow 1.0s ease-out forwards;}
+  @keyframes coin-glow{
+    0%  {box-shadow:0 0 0px rgba(255,69,0,0);border-color:rgba(250,204,21,0.35);}
+    18% {box-shadow:0 0 22px rgba(255,69,0,0.90),0 0 44px rgba(255,69,0,0.35);border-color:rgba(255,80,0,0.95);}
+    55% {box-shadow:0 0 14px rgba(255,100,0,0.55);border-color:rgba(255,100,0,0.65);}
+    100%{box-shadow:0 0 0px rgba(255,69,0,0);border-color:rgba(250,204,21,0.35);}
+  }
+
+  /* ── Coin number colour shift — fires on #cval at GODLIKE milestone ── */
+  .coin-godlike{animation:coin-godlike 1.0s ease-out forwards;}
+  @keyframes coin-godlike{
+    0%  {color:#facc15;}
+    18% {color:#ff4500;text-shadow:0 0 10px rgba(255,69,0,0.95);}
+    55% {color:#fb923c;text-shadow:0 0 6px rgba(251,146,60,0.6);}
+    100%{color:#facc15;text-shadow:none;}
+  }
+
+  /* touch control buttons removed — gestures used instead */
+  /* ── Fire / Cannon button — cannonball magazine display ── */
+  #tbtn-fire{
+    position:absolute;
+    bottom:max(10px,env(safe-area-inset-bottom,10px));
+    right:8px;
+    width:50px;height:112px;
+    background:rgba(14,6,2,0.90);
+    border:1.5px solid rgba(180,80,20,0.30);
+    border-radius:13px;
+    display:flex;align-items:center;justify-content:center;
+    padding:0;
+    cursor:pointer;touch-action:manipulation;
+    -webkit-tap-highlight-color:transparent;
+    -webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px);
+    z-index:10;
+    box-shadow:0 0 8px rgba(180,80,20,0.10),0 2px 8px rgba(0,0,0,0.55);
+    transition:opacity 0.2s,transform 0.07s,border-color 0.15s,box-shadow 0.15s;
+    opacity:0.38;
+  }
+  #tbtn-fire.gun-active{
+    opacity:1;
+    border-color:rgba(255,100,20,0.80);
+    box-shadow:0 0 20px rgba(255,80,0,0.55),0 0 8px rgba(255,120,20,0.30),0 2px 10px rgba(0,0,0,0.65);
+  }
+  #tbtn-fire.gun-active:active{
+    transform:scale(0.91);
+    box-shadow:0 0 32px rgba(255,80,0,0.75),0 1px 5px rgba(0,0,0,0.7);
+  }
+  #ammo-canvas{display:block;image-rendering:pixelated;}
+
+  /* ── Nitro reserve button — mirrors fire button on left side ── */
+  #tbtn-nitro{
+    position:absolute;
+    bottom:max(10px,env(safe-area-inset-bottom,10px));
+    left:8px;
+    width:50px;height:112px;
+    background:rgba(6,4,0,0.90);
+    border:1.5px solid rgba(245,158,11,0.22);
+    border-radius:13px;
+    display:none;align-items:center;justify-content:center;
+    padding:0;
+    cursor:pointer;touch-action:manipulation;
+    -webkit-tap-highlight-color:transparent;
+    -webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px);
+    z-index:10;
+    box-shadow:0 0 8px rgba(245,158,11,0.08),0 2px 8px rgba(0,0,0,0.55);
+    transition:opacity 0.2s,transform 0.07s,border-color 0.15s,box-shadow 0.15s;
+    opacity:0.38;
+    user-select:none;-webkit-user-select:none;
+  }
+  #tbtn-nitro.nitro-ready{
+    opacity:1;
+    border-color:rgba(245,158,11,0.80);
+    box-shadow:0 0 20px rgba(245,130,0,0.55),0 0 8px rgba(255,180,20,0.30),0 2px 10px rgba(0,0,0,0.65);
+  }
+  #tbtn-nitro.nitro-ready:active{
+    transform:scale(0.91);
+    box-shadow:0 0 32px rgba(245,130,0,0.75),0 1px 5px rgba(0,0,0,0.7);
+  }
+  #nitro-canvas{display:block;image-rendering:pixelated;}
+  
+  /* ── Mute button ── */
+  #muteBtn{
+    position:absolute;top:44px;right:8px;
+    width:32px;height:32px;
+    background:rgba(8,10,24,0.82);
+    border:1px solid rgba(255,255,255,0.14);
+    border-radius:9px;
+    display:flex;align-items:center;justify-content:center;
+    color:rgba(200,210,255,0.80);font-size:15px;
+    cursor:pointer;touch-action:manipulation;
+    -webkit-tap-highlight-color:transparent;
+    -webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px);
+    z-index:10;
+    transition:background 0.12s,border-color 0.12s;
+  }
+  #muteBtn.muted{color:rgba(140,140,160,0.5);border-color:rgba(255,255,255,0.05);}
+  #muteBtn:active{background:rgba(40,60,160,0.7);}
+  /* ── Pause button — bottom-centre so left side is free for nitro button ── */
+  #pauseBtn{
+    position:absolute;bottom:max(10px,env(safe-area-inset-bottom,10px));
+    left:50%;transform:translateX(-50%);
+    width:33px;height:33px;
+    background:rgba(8,10,24,0.82);
+    border:1px solid rgba(255,255,255,0.18);
+    border-radius:10px;
+    display:none;align-items:center;justify-content:center;
+    color:rgba(200,210,255,0.90);font-size:13px;
+    cursor:pointer;touch-action:manipulation;
+    -webkit-tap-highlight-color:transparent;
+    -webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px);
+    z-index:10;
+    transition:background 0.12s,border-color 0.12s;
+    box-shadow:0 2px 10px rgba(0,0,0,0.5);
+  }
+  #pauseBtn:active{background:rgba(40,60,160,0.7);}
+  /* ── Exit button — top-left corner ── */
+  #exitBtn{
+    position:absolute;top:8px;left:8px;
+    width:33px;height:33px;
+    background:rgba(8,10,24,0.82);
+    border:1px solid rgba(255,80,60,0.28);
+    border-radius:10px;
+    display:none;align-items:center;justify-content:center;
+    color:rgba(255,120,100,0.85);font-size:12px;
+    cursor:pointer;touch-action:manipulation;
+    -webkit-tap-highlight-color:transparent;
+    -webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px);
+    z-index:10;
+    transition:background 0.12s,border-color 0.12s;
+    box-shadow:0 2px 10px rgba(0,0,0,0.5);
+  }
+  #exitBtn:active{background:rgba(160,40,40,0.6);}
+
+  /* ── Sound Controls Button — animated EQ bar visualiser ── */
+  #soundCtrlBtn{
+    position:absolute;top:82px;right:8px;
+    width:36px;height:36px;
+    background:rgba(8,10,24,0.88);
+    border:1px solid rgba(245,158,11,0.35);
+    border-radius:10px;
+    display:none;align-items:center;justify-content:center;
+    padding:0;
+    cursor:pointer;touch-action:manipulation;
+    -webkit-tap-highlight-color:transparent;
+    -webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px);
+    z-index:10;
+    box-shadow:0 0 10px rgba(245,158,11,0.18),0 2px 8px rgba(0,0,0,0.55);
+    transition:background 0.15s,border-color 0.20s,box-shadow 0.20s;
+    overflow:hidden;
+  }
+  #soundCtrlBtn.sc-open{
+    border-color:rgba(96,165,250,0.75);
+    background:rgba(10,22,70,0.92);
+    box-shadow:0 0 16px rgba(96,165,250,0.45),0 2px 8px rgba(0,0,0,0.65);
+  }
+  #soundCtrlBtn.muted{
+    border-color:rgba(80,90,120,0.25);
+    box-shadow:0 0 4px rgba(0,0,0,0.30);
+  }
+  #soundCtrlBtn:active{transform:scale(0.92);}
+
+  /* ── EQ bar container ── */
+  .eq-bars{
+    display:flex;
+    align-items:flex-end;
+    justify-content:center;
+    gap:3px;
+    height:20px;
+    width:24px;
+    padding-bottom:1px;
+  }
+
+  /* ── Individual EQ bars ── */
+  .eq-bar{
+    width:4px;
+    border-radius:1px 1px 0 0;
+    min-height:2px;
+    transition:background 0.3s;
+  }
+
+  /* Default (gameplay active) — amber bars pulsing */
+  @keyframes eq-pulse-1{ 0%,100%{height:4px}  25%{height:16px} 60%{height:8px}  }
+  @keyframes eq-pulse-2{ 0%,100%{height:10px} 35%{height:3px}  70%{height:18px} }
+  @keyframes eq-pulse-3{ 0%,100%{height:14px} 20%{height:5px}  55%{height:12px} }
+  @keyframes eq-pulse-4{ 0%,100%{height:7px}  45%{height:17px} 80%{height:4px}  }
+
+  #eq-b1{ animation:eq-pulse-1 1.2s ease-in-out infinite; background:linear-gradient(to top,#f59e0b,#fde68a); box-shadow:0 0 4px rgba(245,158,11,0.80); }
+  #eq-b2{ animation:eq-pulse-2 0.85s ease-in-out infinite; background:linear-gradient(to top,#f59e0b,#fde68a); box-shadow:0 0 4px rgba(245,158,11,0.80); }
+  #eq-b3{ animation:eq-pulse-3 1.45s ease-in-out infinite; background:linear-gradient(to top,#f59e0b,#fde68a); box-shadow:0 0 4px rgba(245,158,11,0.80); }
+  #eq-b4{ animation:eq-pulse-4 1.0s ease-in-out infinite;  background:linear-gradient(to top,#f59e0b,#fde68a); box-shadow:0 0 4px rgba(245,158,11,0.80); }
+
+  /* Panel open — bars turn blue */
+  #soundCtrlBtn.sc-open #eq-b1,
+  #soundCtrlBtn.sc-open #eq-b2,
+  #soundCtrlBtn.sc-open #eq-b3,
+  #soundCtrlBtn.sc-open #eq-b4{
+    background:linear-gradient(to top,#3b82f6,#93c5fd);
+    box-shadow:0 0 5px rgba(96,165,250,0.90);
+  }
+
+  /* Muted — bars go flat, grey, no glow */
+  #soundCtrlBtn.muted #eq-b1,
+  #soundCtrlBtn.muted #eq-b2,
+  #soundCtrlBtn.muted #eq-b3,
+  #soundCtrlBtn.muted #eq-b4{
+    animation:none;
+    height:2px;
+    background:#2a3040;
+    box-shadow:none;
+  }
+  /* ── Sound Controls Panel ── */
+  #soundCtrlPanel{
+    position:absolute;
+    top:50%;left:50%;
+    transform:translate(-50%,-50%);
+    width:220px;
+    background:rgba(6,8,22,0.97);
+    border:1.5px solid rgba(96,165,250,0.45);
+    border-radius:14px;
+    padding:14px 16px 16px;
+    display:none;
+    flex-direction:column;
+    gap:12px;
+    z-index:50;
+    pointer-events:auto;
+    -webkit-backdrop-filter:blur(20px);backdrop-filter:blur(20px);
+    box-shadow:0 0 0 1px rgba(255,255,255,0.05),0 8px 32px rgba(0,0,0,0.85),0 0 40px rgba(59,130,246,0.12);
+  }
+  #soundCtrlPanel.visible{display:flex;}
+  #soundCtrlPanel h3{
+    color:#93c5fd;
+    font-family:'Orbitron',sans-serif;
+    font-size:10px;font-weight:900;letter-spacing:1.5px;
+    text-align:center;margin:0;
+    text-shadow:0 0 10px rgba(96,165,250,0.6);
+  }
+  .sc-row{
+    display:flex;align-items:center;gap:10px;
+  }
+  .sc-icon{font-size:15px;line-height:1;flex-shrink:0;width:20px;text-align:center;}
+  .sc-info{display:flex;flex-direction:column;gap:2px;flex:1;}
+  .sc-label{
+    color:rgba(148,163,184,0.85);
+    font-size:8px;font-weight:700;letter-spacing:1px;
+    text-transform:uppercase;
+    font-family:'Orbitron',monospace;
+  }
+  input[type=range].sc-slider{
+    -webkit-appearance:none;appearance:none;
+    width:100%;height:4px;
+    background:rgba(40,50,80,0.80);
+    border-radius:2px;cursor:pointer;outline:none;
+    border:1px solid rgba(255,255,255,0.08);
+  }
+  input[type=range].sc-slider::-webkit-slider-thumb{
+    -webkit-appearance:none;
+    width:14px;height:14px;border-radius:50%;
+    background:linear-gradient(135deg,#60a5fa,#3b82f6);
+    border:1.5px solid rgba(255,255,255,0.35);
+    box-shadow:0 0 6px rgba(59,130,246,0.6);
+    cursor:pointer;
+  }
+  input[type=range].sc-slider.sfx::-webkit-slider-thumb{background:linear-gradient(135deg,#fbbf24,#f59e0b);box-shadow:0 0 6px rgba(245,158,11,0.6);}
+  input[type=range].sc-slider.bg::-webkit-slider-thumb{background:linear-gradient(135deg,#4ade80,#22c55e);box-shadow:0 0 6px rgba(74,222,128,0.6);}
+  input[type=range].sc-slider.wx::-webkit-slider-thumb{background:linear-gradient(135deg,#67e8f9,#06b6d4);box-shadow:0 0 6px rgba(6,182,212,0.6);}
+  input[type=range].sc-slider::-moz-range-thumb{width:12px;height:12px;border-radius:50%;background:#3b82f6;border:1.5px solid rgba(255,255,255,0.35);}
+  #soundCtrlClose{
+    margin-top:2px;
+    padding:7px 0;
+    background:rgba(20,40,80,0.7);
+    border:1px solid rgba(96,165,250,0.35);
+    border-radius:7px;
+    color:#93c5fd;
+    font-family:'Orbitron',sans-serif;font-size:9px;font-weight:700;letter-spacing:1px;
+    cursor:pointer;touch-action:manipulation;
+    -webkit-tap-highlight-color:transparent;
+    transition:background 0.1s;
+  }
+  #soundCtrlClose:active{background:rgba(40,60,160,0.7);}
+  /* ── Performance: strip backdrop-filter on mid/low tier ── */
+  .perf-no-blur .hb,
+  .perf-no-blur #scorebox,
+  .perf-no-blur #jbar,
+  .perf-no-blur #muteBtn,
+  .perf-no-blur #pauseBtn,
+  .perf-no-blur #exitBtn,
+  .perf-no-blur #soundCtrlBtn,
+  .perf-no-blur #tbtn-fire,
+  .perf-no-blur #soundCtrlPanel{
+    -webkit-backdrop-filter:none!important;
+    backdrop-filter:none!important;
+  }
+  /* ── Sound controls dim overlay ── */
+  #soundCtrlDim{
+    position:absolute;inset:0;background:rgba(0,0,0,0.5);
+    display:none;z-index:49;
+    pointer-events:none;
+    border-radius:12px;
+  }
+  #soundCtrlDim.visible{display:block;pointer-events:auto;}
+  /* ── iOS Add to Home Screen banner ── */
+  #iosBanner{
+    display:none;
+    position:fixed;bottom:0;left:0;right:0;
+    background:rgba(10,14,30,0.97);
+    border-top:1px solid rgba(255,255,255,0.12);
+    padding:10px 16px max(10px,env(safe-area-inset-bottom,10px));
+    color:#e2e8f0;font-size:12px;line-height:1.5;
+    text-align:center;z-index:999;
+    -webkit-backdrop-filter:blur(16px);backdrop-filter:blur(16px);
+  }
+  #iosBanner span{color:#fbbf24;font-weight:700;}
+  #iosBanner button{
+    position:absolute;top:8px;right:12px;
+    background:none;border:none;color:#64748b;font-size:18px;cursor:pointer;
+    padding:4px 6px;
+  }
+
+/* ══ PORTRAIT-ONLY LOCK — shown when device is in landscape ══════════════
+   A fullscreen overlay tells the user to rotate back to portrait.
+   Hidden by default; shown via @media (orientation:landscape) on mobile.  */
+#rotate-prompt {
+  display: none;
+  position: fixed;
+  inset: 0;
+  z-index: 99999;
+  background: #07080f;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 18px;
+  color: #e2e8f0;
+  font-family: 'Orbitron', monospace, sans-serif;
+  text-align: center;
+  padding: 24px;
+}
+#rotate-prompt .rp-icon {
+  font-size: 64px;
+  animation: rp-spin 1.6s ease-in-out infinite alternate;
+}
+#rotate-prompt p {
+  font-size: 15px;
+  font-weight: 700;
+  letter-spacing: 1px;
+  color: #00e676;
+  margin: 0;
+  line-height: 1.5;
+}
+#rotate-prompt small {
+  font-size: 10px;
+  color: rgba(255,255,255,0.4);
+  letter-spacing: 0.5px;
+}
+@keyframes rp-spin {
+  from { transform: rotate(-30deg); }
+  to   { transform: rotate(30deg); }
+}
+/* Show overlay whenever the viewport is wider than it is tall on mobile */
+@media screen and (orientation: landscape) and (max-height: 600px) {
+  #rotate-prompt { display: flex; }
+}
+
+  /* ════════════════════════════════════════════════════════════════
+     BOOT LOADER
+     Pure CSS — no JS required to appear.
+     Fills the screen while game.js / audio.js / logic.js / render.js
+     are still downloading. Hidden instantly once the boot script runs.
+  ════════════════════════════════════════════════════════════════ */
+  #boot-loader{
+    position:fixed;
+    top:0;left:0;
+    width:100%;height:100%;
+    background:#07080f;
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    justify-content:center;
+    gap:0;
+    z-index:9999;
+    pointer-events:none;
+  }
+
+  /* ── Animated car ── */
+  .bl-car{
+    position:relative;
+    width:72px;
+    height:32px;
+    margin-bottom:4px;
+    animation:bl-bounce 0.55s ease-in-out infinite alternate;
+  }
+  @keyframes bl-bounce{
+    from{transform:translateY(0px);}
+    to  {transform:translateY(-5px);}
+  }
+  .bl-body{
+    position:absolute;
+    bottom:10px;left:0;
+    width:72px;height:20px;
+    background:linear-gradient(135deg,#00e676 0%,#00b85c 60%,#007a3d 100%);
+    border-radius:6px 10px 4px 4px;
+    box-shadow:0 0 14px rgba(0,230,118,0.45);
+  }
+  .bl-body::before{
+    content:'';
+    position:absolute;
+    top:-8px;left:14px;
+    width:38px;height:12px;
+    background:linear-gradient(135deg,#00c460 0%,#009a4e 100%);
+    border-radius:6px 6px 0 0;
+  }
+  /* headlight glow */
+  .bl-body::after{
+    content:'';
+    position:absolute;
+    top:5px;right:-3px;
+    width:6px;height:6px;
+    background:#fbbf24;
+    border-radius:50%;
+    box-shadow:0 0 8px 3px rgba(251,191,36,0.7);
+    animation:bl-headlight 0.8s ease-in-out infinite alternate;
+  }
+  @keyframes bl-headlight{
+    from{opacity:0.6;}
+    to  {opacity:1;}
+  }
+  .bl-wheel{
+    position:absolute;
+    bottom:2px;
+    width:14px;height:14px;
+    background:radial-gradient(circle at 40% 38%,#475569 0%,#1e293b 65%,#0f172a 100%);
+    border-radius:50%;
+    border:2px solid #334155;
+    animation:bl-spin 0.45s linear infinite;
+  }
+  .bl-wheel-f{right:8px;}
+  .bl-wheel-r{left:8px;}
+  @keyframes bl-spin{
+    from{transform:rotate(0deg);}
+    to  {transform:rotate(360deg);}
+  }
+
+  /* ── Road strip ── */
+  .bl-road{
+    width:160px;height:4px;
+    background:#1e293b;
+    border-radius:2px;
+    overflow:hidden;
+    margin-bottom:20px;
+  }
+  .bl-road-line{
+    height:100%;
+    width:40%;
+    background:linear-gradient(90deg,transparent,#00e676,transparent);
+    animation:bl-road-anim 0.7s linear infinite;
+  }
+  @keyframes bl-road-anim{
+    from{transform:translateX(-100%);}
+    to  {transform:translateX(350%);}
+  }
+
+  /* ── "LOADING..." text ── */
+  .bl-text{
+    font-family:'Orbitron',monospace,sans-serif;
+    font-size:12px;
+    font-weight:700;
+    letter-spacing:3px;
+    color:rgba(255,255,255,0.35);
+    text-transform:uppercase;
+  }
+  .bl-dots span{
+    display:inline-block;
+    animation:bl-dot 1.2s ease-in-out infinite;
+    opacity:0;
+  }
+  .bl-dots span:nth-child(1){animation-delay:0s;}
+  .bl-dots span:nth-child(2){animation-delay:0.3s;}
+  .bl-dots span:nth-child(3){animation-delay:0.6s;}
+  @keyframes bl-dot{
+    0%,80%,100%{opacity:0;}
+    40%        {opacity:1;}
+  }
