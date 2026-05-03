@@ -577,8 +577,8 @@
   from { transform: rotate(-30deg); }
   to   { transform: rotate(30deg); }
 }
-/* Show overlay whenever the viewport is wider than it is tall on mobile */
-@media screen and (orientation: landscape) and (max-height: 600px) {
+/* Show overlay only on touch/mobile devices held in landscape — never on desktop */
+@media screen and (orientation: landscape) and (max-height: 600px) and (pointer: coarse) {
   #rotate-prompt { display: flex; }
 }
 
