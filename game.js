@@ -1133,16 +1133,28 @@ canvas.addEventListener('mousedown', e=>{
     return;
   }
 
-  // INTRO screen buttons
+  // INTRO screen buttons — coordinates computed to match render.js exactly
   if(gst===ST.INTRO){
-    const _footY2=10+H-20-42;
-    const _backY=_footY2+10;
-    if(relX>=34&&relX<=110&&relY>=_backY&&relY<=_backY+22){stopMenuMusic();gst=ST.SPLASH;initVars();startMenuMusic();return;}
-    if(relX>=286&&relX<=372&&relY>=_backY&&relY<=_backY+22){gst=ST.HOWTO;return;}
-    if(relX>=158&&relX<=242&&relY>=_backY&&relY<=_backY+22){showStats=!showStats;return;}
-    if(showStats&&relX>=152&&relX<=248&&relY>=490&&relY<=514){showStats=false;return;}
-    const _pbY=_footY2-56;
-    if(relX>=145&&relX<=255&&relY>=_pbY&&relY<=_pbY+34){showStats=false;reset();return;}
+    const _iCW=352,_iCX=(W-_iCW)/2,_iCY=10,_iCardH=H-20;
+    const _iFootY=_iCY+_iCardH-42;
+    const _iBackY=_iFootY+10, _iBtnH=22;
+    // BACK (bottom-left): CX+10, w=76
+    if(relX>=_iCX+10&&relX<=_iCX+86&&relY>=_iBackY&&relY<=_iBackY+_iBtnH){
+      stopMenuMusic();gst=ST.SPLASH;initVars();startMenuMusic();return;
+    }
+    // STATS (bottom-center): W/2-38, w=76
+    if(relX>=W/2-38&&relX<=W/2+38&&relY>=_iBackY&&relY<=_iBackY+_iBtnH){
+      showStats=!showStats;return;
+    }
+    // HOWTO (bottom-right): CX+CW-86, w=76
+    if(relX>=_iCX+_iCW-86&&relX<=_iCX+_iCW-10&&relY>=_iBackY&&relY<=_iBackY+_iBtnH){
+      gst=ST.HOWTO;return;
+    }
+    // PLAY (above footer): W/2-55, w=110, h=34
+    const _iPbY=_iFootY-56;
+    if(relX>=W/2-55&&relX<=W/2+55&&relY>=_iPbY&&relY<=_iPbY+34){
+      showStats=false;reset();return;
+    }
     if(showStats){showStats=false;return;}
     return;
   }
@@ -1396,16 +1408,11 @@ canvas.addEventListener('touchend', e=>{
       // Close stats panel on any tap outside
       if(showStats){showStats=false;e.stopPropagation();return;}
     }
-  if(gst===ST.LEADERBOARD){
-    const _lbCloseY=H-60;
-    if(relX>=W/2-60&&relX<=W/2+60&&relY>=_lbCloseY&&relY<=_lbCloseY+40){
-      gst=ST.GAMEOVER;e.stopPropagation();return;
-    }
-    e.stopPropagation();return;
-  }
+    // Always consume the touch in INTRO state — prevent fallthrough to doShop/doStart
+    if(gst===ST.INTRO){e.stopPropagation();return;}
 
-  if(gst!==ST.REVIVE&&gst!==ST.SPLASH && relY>H-56 && relX>=W/2-106 && relX<=W/2-6){ doShop(); return; }
-  if(gst===ST.GAMEOVER && relY>H-56 && relX>=W/2+6 && relX<=W/2+106){ _llOpenLeaderboard(); return; }
+    if(gst!==ST.REVIVE&&gst!==ST.SPLASH && relY>H-56 && relX>=W/2-106 && relX<=W/2-6){ doShop(); return; }
+    if(gst===ST.GAMEOVER && relY>H-56 && relX>=W/2+6 && relX<=W/2+106){ _llOpenLeaderboard(); return; }
     // GAMEOVER: RETRY and MENU buttons
     if(gst===ST.GAMEOVER && isTap){
       const _GOpy=(H-410)/2-20, _GOph=410;
@@ -1430,6 +1437,15 @@ canvas.addEventListener('touchend', e=>{
     }
     if(gst!==ST.INTRO&&gst!==ST.GAMEOVER&&gst!==ST.SPLASH) doStart();
     e.stopPropagation(); return;
+  }
+
+  // ── LEADERBOARD screen — close button ──
+  if(gst===ST.LEADERBOARD){
+    const _lbCloseY=H-60;
+    if(relX>=W/2-60&&relX<=W/2+60&&relY>=_lbCloseY&&relY<=_lbCloseY+40){
+      gst=ST.GAMEOVER;e.stopPropagation();return;
+    }
+    e.stopPropagation();return;
   }
 
   // ── Exit confirm overlay taps ──

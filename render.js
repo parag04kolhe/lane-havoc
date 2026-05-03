@@ -4545,8 +4545,7 @@ function _drawLegendIcon(type,cx,cy,sz){
       ctx.fillStyle='#e2e8f0';ctx.shadowColor='#e2e8f0';ctx.shadowBlur=5;
       ctx.fillRect(cx-sz*0.66,cy-sz*0.05,sz*0.28,sz*0.24);
       ctx.fillRect(cx+sz*0.38,cy-sz*0.05,sz*0.28,sz*0.24);
-      ctx.shadowBlur=0;
-      ctx.restore();
+      ctx.shadowBlur=0;ctx.restore();
       break;}
     case 'gun': { // side-profile gun silhouette
       ctx.save();
@@ -4556,8 +4555,7 @@ function _drawLegendIcon(type,cx,cy,sz){
       ctx.fillStyle=gunSlG;rr(cx-sz*0.58,cy-sz*0.22,sz*1.05,sz*0.34,sz*0.07);ctx.fill();
       ctx.fillStyle='#d4a830';ctx.shadowColor='rgba(255,200,40,0.7)';ctx.shadowBlur=4;
       rr(cx-sz*0.82,cy-sz*0.12,sz*0.28,sz*0.12,sz*0.04);ctx.fill();
-      ctx.shadowBlur=0;
-      ctx.fillStyle='#484858';
+      ctx.shadowBlur=0;ctx.fillStyle='#484858';
       ctx.save();ctx.translate(cx+sz*0.3,cy);ctx.rotate(0.1);
       ctx.fillRect(-sz*0.13,0,sz*0.2,sz*0.48);ctx.restore();
       ctx.strokeStyle='#6a6a7a';ctx.lineWidth=sz*0.09;ctx.lineCap='round';
@@ -4643,7 +4641,7 @@ function drawIntro(){
     {type:'manhole',  name:'MANHOLE',      desc:'Orange cover — avoid or jump over'},
     {type:'speedbump',name:'SPEED BUMP',   desc:'Safe to hit — slows you briefly'},
     {type:'brokencar',name:'BROKEN CAR',   desc:'Wreck spans 2 lanes — plan ahead'},
-    {type:'truck',    name:'TRUCK',        desc:'2-hit obstacle — tank it twice or dodge (Stage 3+)'},
+    {type:'truck',    name:'TRUCK',        desc:'2-hit obstacle — tank twice or dodge (Stage 3+)'},
     {type:'oil',      name:'OIL SLICK',    desc:'Locks lane-switching for ~2s (Stage 6+)'},
     {type:'roadwork', name:'ROAD WORK',    desc:'Cone closes lane 4 — stay in lanes 1–3'},
     {type:'nitro',    name:'NITRO',        desc:'2× score boost ~3s — tap NITRO button to fire'},
@@ -4827,7 +4825,6 @@ function drawIntro(){
     ctx.textAlign='center';
     ctx.restore();
   }
-  _drawShopBtn();
 }
 
 /* ══════════════════════════════════════════════
