@@ -5103,62 +5103,66 @@ function drawGameOver(){
   drawGlassPanel(PX,PY,PW,PH,16,_panelCol);
   ctx.textAlign='center';
 
-  // ── Title: always RUN SUMMARY ──
+  // ── Title: RUN SUMMARY ──
   ctx.font="900 20px 'Orbitron',impact,sans-serif";
   ctx.fillStyle='#f8fafc';ctx.shadowColor='#4ade80';ctx.shadowBlur=16;
-  ctx.fillText('RUN SUMMARY',W/2,PY+44);ctx.shadowBlur=0;
+  ctx.fillText('RUN SUMMARY',W/2,PY+40);ctx.shadowBlur=0;
 
   // ── NEW RECORD badge ──
   if(isBest){
     ctx.font="bold 9px 'Orbitron',sans-serif";ctx.fillStyle='#fbbf24';
     ctx.shadowColor='#fbbf24';ctx.shadowBlur=8;
-    ctx.fillText('⭐ NEW RECORD!',W/2,PY+60);ctx.shadowBlur=0;
+    ctx.fillText('⭐ NEW RECORD!',W/2,PY+56);ctx.shadowBlur=0;
   }
 
-  // ── Score ──
-  const _scoreY=isBest?PY+78:PY+68;
-  ctx.font="bold 22px 'Orbitron',impact,sans-serif";
-  ctx.fillStyle=isBest?'#fbbf24':'#f8fafc';
-  ctx.fillText(_finalScore,W/2,_scoreY);
-  ctx.font="600 9px 'Rajdhani',sans-serif";ctx.fillStyle='#64748b';
-  ctx.fillText('SCORE',W/2,_scoreY+13);
-
-  // Divider
+  // Divider below title
   ctx.strokeStyle='rgba(255,255,255,0.08)';ctx.lineWidth=1;
-  ctx.beginPath();ctx.moveTo(PX+16,PY+90);ctx.lineTo(PX+PW-16,PY+90);ctx.stroke();
+  ctx.beginPath();ctx.moveTo(PX+16,PY+64);ctx.lineTo(PX+PW-16,PY+64);ctx.stroke();
 
-  // ── Run stats grid (this session) ──
+  // ── SCORE — first stat, drawn larger than the rest ──
+  const _scoreCol=isBest?'#fbbf24':'#f8fafc';
+  ctx.font="600 10px 'Rajdhani',sans-serif";ctx.fillStyle='#94a3b8';
+  ctx.textAlign='right';ctx.fillText('Score',W/2-4,PY+86);
+  ctx.font="900 20px 'Orbitron',impact,sans-serif";
+  ctx.fillStyle=_scoreCol;ctx.shadowColor=_scoreCol;ctx.shadowBlur=isBest?14:6;
+  ctx.textAlign='left';ctx.fillText(_finalScore,W/2+6,PY+87);ctx.shadowBlur=0;
+
+  // Thin divider under score
+  ctx.strokeStyle='rgba(255,255,255,0.06)';ctx.lineWidth=1;
+  ctx.beginPath();ctx.moveTo(PX+16,PY+96);ctx.lineTo(PX+PW-16,PY+96);ctx.stroke();
+
+  // ── Remaining run stats grid ──
   const runDist=parseFloat((distanceTravelled/15120).toFixed(2));
   const stats=[
-    ['Near-Misses',   runNearMisses,          '#f97316'],
-    ['Best Streak',   runMaxCombo+'×',         '#ef4444'],
-    ['Coins',         '+'+sessionCoins,        '#fbbf24'],
-    ['Cattle Dodged', runCattleDodged,         '#4ade80'],
-    ['Distance',      runDist+'km',            '#06b6d4'],
-    ['Stage Reached', stageNum,               '#a78bfa'],
+    ['Near-Misses',   runNearMisses,   '#f97316'],
+    ['Best Streak',   runMaxCombo+'×', '#ef4444'],
+    ['Coins',         '+'+sessionCoins,'#fbbf24'],
+    ['Cattle Dodged', runCattleDodged, '#4ade80'],
+    ['Distance',      runDist+'km',    '#06b6d4'],
+    ['Stage Reached', stageNum,        '#a78bfa'],
   ];
   stats.forEach(([k,v,c],i)=>{
-    const ry=PY+110+i*20;
+    const ry=PY+114+i*20;
     ctx.font="600 10px 'Rajdhani',sans-serif";ctx.fillStyle='#94a3b8';ctx.textAlign='right';ctx.fillText(k,W/2-4,ry);
     ctx.font="bold 10px 'Orbitron',sans-serif";ctx.fillStyle=c;ctx.textAlign='left';ctx.fillText(v,W/2+6,ry);
   });
 
-  // Divider
+  // Divider above all-time bests
   ctx.strokeStyle='rgba(255,255,255,0.08)';ctx.lineWidth=1;
-  ctx.beginPath();ctx.moveTo(PX+16,PY+232);ctx.lineTo(PX+PW-16,PY+232);ctx.stroke();
+  ctx.beginPath();ctx.moveTo(PX+16,PY+234);ctx.lineTo(PX+PW-16,PY+234);ctx.stroke();
 
   // ── All-time bests ──
-  ctx.font="600 10px 'Rajdhani',sans-serif";ctx.fillStyle='#94a3b8';ctx.textAlign='right';ctx.fillText('Best Score',W/2-4,PY+250);
-  ctx.font="bold 10px 'Orbitron',sans-serif";ctx.fillStyle=isBest?'#fbbf24':'#f8fafc';ctx.textAlign='left';ctx.fillText(bestScore,W/2+6,PY+250);
-  ctx.font="600 10px 'Rajdhani',sans-serif";ctx.fillStyle='#94a3b8';ctx.textAlign='right';ctx.fillText('Best Distance',W/2-4,PY+267);
-  ctx.font="bold 10px 'Orbitron',sans-serif";ctx.fillStyle='#06b6d4';ctx.textAlign='left';ctx.fillText(bestDistance.toFixed(2)+'km',W/2+6,PY+267);
-  ctx.font="600 10px 'Rajdhani',sans-serif";ctx.fillStyle='#94a3b8';ctx.textAlign='right';ctx.fillText('Coins Bank',W/2-4,PY+284);
-  ctx.textAlign='left';_coinIco(W/2+11,PY+281,5);ctx.font="bold 10px 'Orbitron',sans-serif";ctx.fillStyle='#fbbf24';ctx.fillText(' '+coinBank,W/2+18,PY+284);
+  ctx.font="600 10px 'Rajdhani',sans-serif";ctx.fillStyle='#94a3b8';ctx.textAlign='right';ctx.fillText('Best Score',W/2-4,PY+252);
+  ctx.font="bold 10px 'Orbitron',sans-serif";ctx.fillStyle=isBest?'#fbbf24':'#f8fafc';ctx.textAlign='left';ctx.fillText(bestScore,W/2+6,PY+252);
+  ctx.font="600 10px 'Rajdhani',sans-serif";ctx.fillStyle='#94a3b8';ctx.textAlign='right';ctx.fillText('Best Distance',W/2-4,PY+269);
+  ctx.font="bold 10px 'Orbitron',sans-serif";ctx.fillStyle='#06b6d4';ctx.textAlign='left';ctx.fillText(bestDistance.toFixed(2)+'km',W/2+6,PY+269);
+  ctx.font="600 10px 'Rajdhani',sans-serif";ctx.fillStyle='#94a3b8';ctx.textAlign='right';ctx.fillText('Coins Bank',W/2-4,PY+286);
+  ctx.textAlign='left';_coinIco(W/2+11,PY+283,5);ctx.font="bold 10px 'Orbitron',sans-serif";ctx.fillStyle='#fbbf24';ctx.fillText(' '+coinBank,W/2+18,PY+286);
 
   // Mission reminder
   if(activeMission){
     ctx.font="600 9px 'Rajdhani',sans-serif";ctx.fillStyle='#475569';ctx.textAlign='center';
-    ctx.fillText('MISSION: '+activeMission.text,W/2,PY+302);
+    ctx.fillText('MISSION: '+activeMission.text,W/2,PY+304);
   }
 
   // ── SHARE button ──
