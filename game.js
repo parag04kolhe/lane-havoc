@@ -1167,10 +1167,15 @@ canvas.addEventListener('mousedown', e=>{
   }
 
   // GAMEOVER screen
-  if(gst===ST.GAMEOVER){
+if(gst===ST.GAMEOVER){
     const _GOpy=(H-410)/2-20,_GOph=410;
     const _rbX=W/2-132-6,_rbY=_GOpy+_GOph-54,_rbW=132,_rbH=34;
     const _mbX=W/2+6,_mbY=_rbY,_mbW=132,_mbH=34;
+    // SHARE button
+    const _shW=168,_shH=30,_shX=W/2-84,_shY=_GOpy+316;
+    if(relX>=_shX&&relX<=_shX+_shW&&relY>=_shY&&relY<=_shY+_shH){
+      _doShareRunSummary();return;
+    }
     if(relX>=_rbX&&relX<=_rbX+_rbW&&relY>=_rbY&&relY<=_rbY+_rbH){doStart();return;}
     if(relX>=_mbX&&relX<=_mbX+_mbW&&relY>=_mbY&&relY<=_mbY+_mbH){
       stopBgMusic();stopWeatherSnd();
@@ -1414,10 +1419,15 @@ canvas.addEventListener('touchend', e=>{
     if(gst!==ST.REVIVE&&gst!==ST.SPLASH && relY>H-56 && relX>=W/2-106 && relX<=W/2-6){ doShop(); return; }
     if(gst===ST.GAMEOVER && relY>H-56 && relX>=W/2+6 && relX<=W/2+106){ _llOpenLeaderboard(); return; }
     // GAMEOVER: RETRY and MENU buttons
-    if(gst===ST.GAMEOVER && isTap){
+if(gst===ST.GAMEOVER && isTap){
       const _GOpy=(H-410)/2-20, _GOph=410;
       const _rbX=W/2-132-6, _rbY=_GOpy+_GOph-54, _rbW=132, _rbH=34;
       const _mbX=W/2+6, _mbY=_rbY, _mbW=132, _mbH=34;
+      // SHARE button
+      const _shW=168,_shH=30,_shX=W/2-84,_shY=_GOpy+316;
+      if(relX>=_shX&&relX<=_shX+_shW&&relY>=_shY&&relY<=_shY+_shH){
+        _doShareRunSummary();e.stopPropagation();return;
+      }
       if(relX>=_rbX&&relX<=_rbX+_rbW&&relY>=_rbY&&relY<=_rbY+_rbH){
         doStart(); e.stopPropagation(); return;
       }

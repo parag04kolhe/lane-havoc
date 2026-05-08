@@ -533,6 +533,46 @@ function checkMission(){
     snd('missionComplete');haptic([30,20,60,20,30]);
   }
 }
+
+/* ══════════════════════════════════════════════
+   SHARE — Run Summary screenshot + text + link
+══════════════════════════════════════════════ */
+function _doShareRunSummary(){
+  const _finalScore=Math.floor(score);
+  const runDist=parseFloat((distanceTravelled/15120).toFixed(2));
+  // ⚠️ Replace the URL below with your real Play Store link once approved
+  const PLAY_URL='https://play.google.com/store/apps/details?id=com.youname.lanehavoc';
+  const shareText=
+    '🏎️ Lane Havoc — My Run!\n'+
+    '📊 Score: '+_finalScore+'  |  Stage: '+stageNum+'\n'+
+    '📏 Distance: '+runDist+'km  |  🪙 Coins: +'+sessionCoins+'\n'+
+    '💨 Near-Misses: '+runNearMisses+'  |  ⚡ Best Streak: '+runMaxCombo+'×\n\n'+
+    'Think you can beat me? Download Lane Havoc — the intelligent arcade racer:\n'+
+    PLAY_URL;
+
+  const _tryShare=function(file){
+    const data={title:'Lane Havoc — My Run Summary',text:shareText};
+    if(file&&navigator.canShare&&navigator.canShare({files:[file]})){data.files=[file];}
+    if(navigator.share){
+      navigator.share(data).catch(function(){});
+    } else if(navigator.clipboard){
+      navigator.clipboard.writeText(shareText).catch(function(){});
+    }
+  };
+
+  try{
+    canvas.toBlob(function(blob){
+      if(blob){
+        var f=new File([blob],'lane-havoc-run.png',{type:'image/png'});
+        _tryShare(f);
+      } else {
+        _tryShare(null);
+      }
+    },'image/png');
+  } catch(e){
+    _tryShare(null);
+  }
+}
 loadMission();
 
 
