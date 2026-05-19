@@ -550,14 +550,6 @@ function _doShareRunSummary(){
     'Think you can beat me? Download Lane Havoc — the intelligent arcade racer:\n'+
     PLAY_URL;
 
-  // Panel geometry (must match drawGameOver in render.js)
-  const PW=308, PH=410, PX=(W-PW)/2, PY=(H-PH)/2-20;
-  // Scale panel to full canvas width
-  const scale=W/PW;
-  const outH=Math.round(PH*scale);
-  // Current DPR used by the canvas
-  const dpr=Math.round(canvas.width/W)||1;
-
   const _tryShare=function(file){
     const data={title:'Lane Havoc — My Run Summary',text:shareText};
     if(file&&navigator.canShare&&navigator.canShare({files:[file]})){data.files=[file];}
@@ -569,20 +561,7 @@ function _doShareRunSummary(){
   };
 
   try{
-    // Create an offscreen canvas that is full-width but only as tall as the panel
-    const oc=document.createElement('canvas');
-    oc.width=W*dpr;
-    oc.height=outH*dpr;
-    const oc2=oc.getContext('2d');
-    // Draw the panel region from the game canvas scaled to full width
-    oc2.drawImage(
-      canvas,
-      Math.round(PX*dpr), Math.round(PY*dpr),
-      Math.round(PW*dpr), Math.round(PH*dpr),
-      0, 0,
-      oc.width, oc.height
-    );
-    oc.toBlob(function(blob){
+    canvas.toBlob(function(blob){
       if(blob){
         var f=new File([blob],'lane-havoc-run.png',{type:'image/png'});
         _tryShare(f);
