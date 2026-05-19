@@ -429,6 +429,8 @@ function saveLifetimeStats(){
   saveLS('rr_stat_coins',statTotalCoins);
 }
 let showStats=false; // toggle stats overlay on intro screen
+let playMode=loadLS('rr_play_mode','swipe'); // 'swipe' or 'track'
+let _mode2TutShown=loadLS('rr_tut2_shown',false); // mode 2 first-run hints shown
 function getSkin() {return SKINS.find(s=>s.id===equippedSkin)||SKINS[0];}
 function getTrail(){return TRAILS.find(t=>t.id===equippedTrail)||TRAILS[0];}
 
@@ -676,6 +678,12 @@ let howtoPage=0;             // current page index 0-4 for How To Play slideshow
 // ── NEW FEATURE VARS ──────────────────────────────────────
 // Oil slick / speed bump timers
 let oilSlickTimer=0; // disables lane switching
+// ── Finger Track mode state ───────────────────────────────────────────────────
+let _ftActiveLane=-1;  // current finger lane (-1 = finger up)
+let _ftLastTapTime=0;  // last touchstart time, for double-tap detection
+let _ftMoveCooldown=0; // frames until next auto-lane-move
+let _mode2HintPhase=0; // 0=idle, 1=steer hint, 2=jump hint, 3=done
+let _mode2HintTimer=0; // frames elapsed in current hint phase
 let slowBumpTimer=0; // brief slowdown
 let clearStretchTimer=0; // stage 10+: intentional pause in spawning (breathing room)
 let _shownMechanics={}; // tracks which mechanic intro banners have been shown this run
@@ -1067,6 +1075,16 @@ canvas.addEventListener('touchstart', e=>{
   }
   const t=e.touches[0];
   tsx=t.clientX; tsy=t.clientY; tsTime=Date.now(); tMoved=false;
+  // ── Finger Track mode: init active lane + double-tap jump detection ──
+  if(playMode==='track'&&(gst===ST.PLAYING||gst===ST.RESPAWNING||gst===ST.CRASHING)){
+    const _ftr=canvas.getBoundingClientRect();
+    const _ftrx=(t.clientX-_ftr.left)*(W/_ftr.width);
+    const _ftNow=Date.now();
+    // Double-tap: finger was up and tapped again within 300ms
+    if(_ftActiveLane===-1&&_ftNow-_ftLastTapTime<300){doJump();}
+    _ftLastTapTime=_ftNow;
+    _ftActiveLane=Math.min(3,Math.max(0,Math.floor(_ftrx/100)));
+  }
   e.preventDefault(); // scoped: only blocks scroll/bounce for canvas touches
   e.stopPropagation();
 },{passive:false});
@@ -1127,11 +1145,13 @@ canvas.addEventListener('mousedown', e=>{
     const b=_splashMenuBtns;
     const hit=(r)=>r&&relX>=r.x&&relX<=r.x+r.w&&relY>=r.y&&relY<=r.y+r.h;
     if(showStats){showStats=false;return;}
-    if(hit(b.play))  { showStats=false;reset();return; }
-    if(hit(b.guide)) { initAC();gst=ST.INTRO;return; }
-    if(hit(b.stats)) { initAC();gst=ST.STATS;return; }
-    if(hit(b.shop))  { doShop();return; }
-    if(hit(b.howto)) { initAC();gst=ST.HOWTO;return; }
+    if(hit(b.play))      { showStats=false;reset();return; }
+    if(hit(b.guide))     { initAC();gst=ST.INTRO;return; }
+    if(hit(b.stats))     { initAC();gst=ST.STATS;return; }
+    if(hit(b.shop))      { doShop();return; }
+    if(hit(b.howto))     { initAC();gst=ST.HOWTO;return; }
+    if(hit(b.modeSwipe)) { playMode='swipe';saveLS('rr_play_mode','swipe');snd('switch');return; }
+    if(hit(b.modeTrack)) { playMode='track';saveLS('rr_play_mode','track');snd('switch');return; }
     return;
   }
 
@@ -1232,9 +1252,11 @@ if(gst===ST.GAMEOVER){
 
   // In-game: left half = left, right half = right, top 40% = jump
   if(gst===ST.PLAYING||gst===ST.RESPAWNING||gst===ST.CRASHING){
-    if(relY<H*0.4) doJump();
-    else if(relX<W/2) doLeft();
-    else doRight();
+    if(playMode!=='track'){
+      if(relY<H*0.4) doJump();
+      else if(relX<W/2) doLeft();
+      else doRight();
+    }
   }
 });
 
@@ -1256,6 +1278,13 @@ canvas.addEventListener('touchmove', e=>{
     const maxScroll=Math.max(0,totalContentH-visibleH);
     lbScrollY=clamp(lbScrollY-dy,0,maxScroll);
     tsx=t.clientX;tsy=t.clientY;
+  }
+  // ── Finger Track mode: update active lane from finger position ──
+  if(playMode==='track'&&_ftActiveLane!==-1&&!gamePaused&&
+     (gst===ST.PLAYING||gst===ST.RESPAWNING||gst===ST.CRASHING)){
+    const _ftr2=canvas.getBoundingClientRect();
+    const _ftrx2=(t.clientX-_ftr2.left)*(W/_ftr2.width);
+    _ftActiveLane=Math.min(3,Math.max(0,Math.floor(_ftrx2/100)));
   }
   e.preventDefault(); // scoped: prevents scroll while finger is on canvas
   e.stopPropagation();
@@ -1388,11 +1417,13 @@ canvas.addEventListener('touchend', e=>{
       if(showStats){
         showStats=false;e.stopPropagation();return;
       }
-      if(hit(b.play)) { showStats=false;reset();e.stopPropagation();return; }
-      if(hit(b.guide)){ initAC();gst=ST.INTRO;e.stopPropagation();return; }
-      if(hit(b.stats)){ initAC();gst=ST.STATS;e.stopPropagation();return; }
-      if(hit(b.shop)) { doShop();e.stopPropagation();return; }
-      if(hit(b.howto)){ initAC();gst=ST.HOWTO;e.stopPropagation();return; }
+      if(hit(b.play))      { showStats=false;reset();e.stopPropagation();return; }
+      if(hit(b.guide))     { initAC();gst=ST.INTRO;e.stopPropagation();return; }
+      if(hit(b.stats))     { initAC();gst=ST.STATS;e.stopPropagation();return; }
+      if(hit(b.shop))      { doShop();e.stopPropagation();return; }
+      if(hit(b.howto))     { initAC();gst=ST.HOWTO;e.stopPropagation();return; }
+      if(hit(b.modeSwipe)) { playMode='swipe';saveLS('rr_play_mode','swipe');snd('switch');e.stopPropagation();return; }
+      if(hit(b.modeTrack)) { playMode='track';saveLS('rr_play_mode','track');snd('switch');e.stopPropagation();return; }
       e.stopPropagation();return;
     }
     // ── INTRO-only button hit detection ──
@@ -1514,14 +1545,20 @@ if(gst===ST.GAMEOVER && isTap){
   }
 
   // In-game controls
-  if(Math.abs(gdy)>Math.abs(gdx) && gdy < -SWIPE) doJump();
-  else if(gdx < -SWIPE) doLeft();
-  else if(gdx >  SWIPE) doRight();
-  else if(isTap){
-    // Tap left half = left, tap right half = right, tap top 40% = jump
-    if(relY < H*0.4) doJump();
-    else if(relX < W/2) doLeft();
-    else doRight();
+  if(playMode==='track'){
+    // Track mode: lift finger → clear active lane. Movement handled via touchmove+update().
+    _ftActiveLane=-1;
+  } else {
+    // Swipe mode controls
+    if(Math.abs(gdy)>Math.abs(gdx) && gdy < -SWIPE) doJump();
+    else if(gdx < -SWIPE) doLeft();
+    else if(gdx >  SWIPE) doRight();
+    else if(isTap){
+      // Tap left half = left, tap right half = right, tap top 40% = jump
+      if(relY < H*0.4) doJump();
+      else if(relX < W/2) doLeft();
+      else doRight();
+    }
   }
   e.stopPropagation();
 },{passive:false});

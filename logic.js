@@ -85,6 +85,10 @@ function initVars(){
   livesTextTimer=0;livesTextCount=0;
   roadworksWarnTimer=0;
   menuScrollY=0;
+  _ftActiveLane=-1;
+  _ftMoveCooldown=0;
+  _mode2HintPhase=0;
+  _mode2HintTimer=0;
   _updateComboBadge();
 }
 function reset(){
@@ -93,8 +97,8 @@ function reset(){
   gamePaused=false;exitConfirmActive=false;
   const pb=document.getElementById('pauseBtn');if(pb)pb.textContent='⏸';
   initVars();gst=ST.PLAYING;
-  // Activate guided tutorial on first-ever run
-  if(!tutorialShown.fullTutorial){ tutPhase=0; }
+  // Activate guided tutorial on first-ever run — skipped in Finger Track mode
+  if(!tutorialShown.fullTutorial && playMode!=='track'){ tutPhase=0; }
   _updateDistBoxVisibility(); // hide distance HUD during tutorial, show normally
   if(equippedBoost==='shield_start')activeShield=true;
   if(equippedBoost==='extra_life')player.lives=2;
@@ -1341,6 +1345,28 @@ function update(dt){
   }
   if(gst===ST.RESPAWNING){player.invTimer-=dt;if(player.invTimer<=0)gst=ST.PLAYING;}
   if(gst!==ST.PLAYING&&gst!==ST.RESPAWNING)return;
+
+  // ── Finger Track mode: per-frame car movement toward finger lane ──
+  if(playMode==='track'&&_ftActiveLane!==-1){
+    if(_ftMoveCooldown>0) _ftMoveCooldown-=dt;
+    else if(player.lane!==_ftActiveLane){
+      if(player.lane>_ftActiveLane) doLeft();
+      else doRight();
+      _ftMoveCooldown=8; // ~130ms between auto lane steps
+    }
+  }
+
+  // ── Mode 2 hint advancement (first run in track mode only) ──
+  if(playMode==='track'&&!_mode2TutShown&&tutPhase<0){
+    _mode2HintTimer+=dt;
+    if(_mode2HintPhase===0){ _mode2HintPhase=1; _mode2HintTimer=0; }
+    if(_mode2HintPhase===1&&_mode2HintTimer>=240){ _mode2HintPhase=2; _mode2HintTimer=0; }
+    if(_mode2HintPhase===2&&_mode2HintTimer>=240){
+      _mode2HintPhase=3;
+      _mode2TutShown=true;
+      saveLS('rr_tut2_shown',true);
+    }
+  }
 
   // dashOff advances only during active play — ties lane dashes and kerb stripes
   // directly to game speed. Stops during crash, revive, gameover.

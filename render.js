@@ -2921,6 +2921,8 @@ function draw(){
   drawPlayerPowerStatus();
   drawPuBanner();
   drawPerfBadge();
+  // Mode 2 first-run hints
+  _drawMode2Hints();
 
   if(gst===ST.SPLASH)    {drawSplash(); return;}
   if(gst===ST.REVIVE)    drawRevive();
@@ -2937,10 +2939,82 @@ function draw(){
 }
 
 /* ══════════════════════════════════════════════
-   DRAW — GUIDED FIRST-RUN TUTORIAL PHASE OVERLAY
-   Phases 1-5 replace old 0-16 tutorial system.
-   Big green sweeping arrows, lane glows, rewind.
+   DRAW — FINGER TRACK MODE FIRST-RUN HINTS
+   Two sequential overlays shown on first run in
+   Track mode only. Phase 1: steer hint. Phase 2: jump hint.
+   Each fades in, holds, and fades out over 240 frames.
 ══════════════════════════════════════════════ */
+function _drawMode2Hints(){
+  if(playMode!=='track'||_mode2TutShown)return;
+  if(_mode2HintPhase===0||_mode2HintPhase>=3)return;
+  if(gst!==ST.PLAYING&&gst!==ST.RESPAWNING)return;
+
+  const phase=_mode2HintPhase;
+  const t=_mode2HintTimer;
+
+  // Fade envelope: in 0-20f, hold 20-220f, fade out 220-240f
+  let alpha;
+  if(t<20)      alpha=t/20;
+  else if(t>220) alpha=(240-t)/20;
+  else           alpha=1;
+  alpha=clamp(alpha,0,1);
+  if(alpha<0.01)return;
+
+  const cx=W/2, cy=Math.round(H*0.20);
+  const boxW=224,boxH=58,boxX=cx-boxW/2,boxY=cy-boxH/2;
+  const accentCol=phase===1?'#38bdf8':'#f59e0b';
+
+  ctx.save();
+  ctx.globalAlpha=alpha;
+
+  // Dark pill background
+  ctx.fillStyle='rgba(5,7,18,0.86)';
+  rr(boxX,boxY,boxW,boxH,12);ctx.fill();
+  ctx.shadowColor=accentCol;ctx.shadowBlur=16;
+  ctx.strokeStyle=accentCol;ctx.lineWidth=1.5;
+  rr(boxX,boxY,boxW,boxH,12);ctx.stroke();
+  ctx.shadowBlur=0;
+
+  const iconX=boxX+34, textX=boxX+66, midY=cy;
+
+  if(phase===1){
+    // Steer hint: animated pointing hand
+    const bob=Math.sin(t*0.10)*3;
+    ctx.font='20px sans-serif';
+    ctx.textAlign='center';ctx.textBaseline='middle';
+    ctx.fillStyle='#fff';
+    ctx.fillText('👆',iconX,midY+bob);
+    ctx.font="bold 9px 'Orbitron',sans-serif";
+    ctx.fillStyle='#e0f2fe';
+    ctx.textAlign='left';ctx.textBaseline='middle';
+    ctx.fillText('MOVE FINGER TO STEER',textX,midY-9);
+    ctx.font="500 9.5px 'Rajdhani',sans-serif";
+    ctx.fillStyle='rgba(255,255,255,0.58)';
+    ctx.fillText('Drag across lanes to control your car',textX,midY+9);
+  } else {
+    // Jump hint: pulsing double-tap ripple
+    const ripple=5+Math.sin(t*0.18)*3;
+    ctx.strokeStyle='rgba(245,158,11,0.75)';ctx.lineWidth=1.4;
+    ctx.beginPath();ctx.arc(iconX,midY,ripple,0,Math.PI*2);ctx.stroke();
+    ctx.beginPath();ctx.arc(iconX,midY,ripple*1.8,0,Math.PI*2);
+    ctx.globalAlpha=alpha*0.35;ctx.stroke();ctx.globalAlpha=alpha;
+    ctx.font='16px sans-serif';
+    ctx.textAlign='center';ctx.textBaseline='middle';
+    ctx.fillStyle='#fff';
+    ctx.fillText('✌️',iconX,midY);
+    ctx.font="bold 9px 'Orbitron',sans-serif";
+    ctx.fillStyle='#fef3c7';
+    ctx.textAlign='left';ctx.textBaseline='middle';
+    ctx.fillText('DOUBLE-TAP TO JUMP',textX,midY-9);
+    ctx.font="500 9.5px 'Rajdhani',sans-serif";
+    ctx.fillStyle='rgba(255,255,255,0.58)';
+    ctx.fillText('Tap twice quickly to leap over obstacles',textX,midY+9);
+  }
+
+  ctx.restore();
+}
+
+
 
 /* ── Big sweeping green screen arrow (like attached image) ──────────────
    dir: 'right' | 'left'
@@ -4257,9 +4331,13 @@ function drawSplash(){
     const sbW=130,sbH=34,sbGapX=14,sbGapY=10;
     const sbLX=W/2-sbW-sbGapX/2, sbRX=W/2+sbGapX/2;
 
-    // PLAY button resting Y — all other rows computed from this
-    const pbRestY=344;
-    const sbRow1Y=pbRestY+pbH+16, sbRow2Y=sbRow1Y+sbH+sbGapY;
+    // PLAY button resting Y — slightly higher to make room for mode toggle
+    const pbRestY=336;
+    // Mode toggle pill (between PLAY and small buttons)
+    const mtSegW=128,mtGap=10,mtH=26;
+    const mtX=W/2-mtSegW-mtGap/2;
+    const mtY=pbRestY+pbH+8;
+    const sbRow1Y=mtY+mtH+8, sbRow2Y=sbRow1Y+sbH+sbGapY;
 
     // ── PLAY button — slides up from below (tied to menuFadeIn) ──
     const playSlide=(1-menuFadeIn)*28; // starts 28px low, rises to resting position
@@ -4322,10 +4400,10 @@ function drawSplash(){
 
     // ── 4 smaller buttons — staggered slide-in (each arrives one after the other) ──
     const smBtns=[
-      {label:'OBJECT GUIDE', x:sbLX, y:sbRow1Y, col:'#38bdf8', id:'guide', delay:158},
-      {label:'STATS',        x:sbRX, y:sbRow1Y, col:'#a78bfa', id:'stats', delay:163},
-      {label:'SHOP',         x:sbLX, y:sbRow2Y, col:'#fbbf24', id:'shop',  delay:168},
-      {label:'HOW TO PLAY',  x:sbRX, y:sbRow2Y, col:'#fb923c', id:'howto', delay:173},
+      {label:'OBJECT GUIDE', x:sbLX, y:sbRow1Y, col:'#38bdf8', id:'guide', delay:160},
+      {label:'STATS',        x:sbRX, y:sbRow1Y, col:'#a78bfa', id:'stats', delay:165},
+      {label:'SHOP',         x:sbLX, y:sbRow2Y, col:'#fbbf24', id:'shop',  delay:170},
+      {label:'HOW TO PLAY',  x:sbRX, y:sbRow2Y, col:'#fb923c', id:'howto', delay:175},
     ];
 
     smBtns.forEach(({label,x,y,col,delay})=>{
@@ -4346,6 +4424,50 @@ function drawSplash(){
       ctx.restore();
     });
 
+    // ── Mode Toggle Pill (between PLAY and small buttons) ──
+    const mtF=clamp((t-154)/14,0,1);
+    if(mtF>0.01){
+      const mtSlide=(1-mtF)*16;
+      const mtDY=mtY+mtSlide;
+      const mtRX=mtX+mtSegW+mtGap;
+      const isSwipe=(playMode==='swipe');
+      const swipeCol='#38bdf8', trackCol='#f59e0b';
+
+      // Label row above pill
+      ctx.save();ctx.globalAlpha=mtF*0.5;
+      ctx.font="600 7px 'Orbitron',sans-serif";
+      ctx.textAlign='center';ctx.textBaseline='middle';
+      ctx.fillStyle='rgba(255,255,255,0.45)';
+      ctx.fillText('CONTROL MODE',W/2,mtDY-9);
+      ctx.restore();
+
+      // Swipe segment
+      ctx.save();ctx.globalAlpha=mtF*(isSwipe?1:0.38);
+      if(isSwipe){ctx.shadowColor=swipeCol;ctx.shadowBlur=14;}
+      ctx.fillStyle=isSwipe?'rgba(56,189,248,0.22)':'rgba(56,189,248,0.04)';
+      rr(mtX,mtDY,mtSegW,mtH,7);ctx.fill();
+      ctx.strokeStyle=swipeCol;ctx.lineWidth=isSwipe?1.8:0.7;
+      rr(mtX,mtDY,mtSegW,mtH,7);ctx.stroke();
+      ctx.shadowBlur=0;ctx.fillStyle=swipeCol;
+      ctx.font="bold 9px 'Orbitron',sans-serif";
+      ctx.textAlign='center';ctx.textBaseline='middle';
+      ctx.fillText('👆  SWIPE',mtX+mtSegW/2,mtDY+mtH/2);
+      ctx.restore();
+
+      // Track segment
+      ctx.save();ctx.globalAlpha=mtF*(!isSwipe?1:0.38);
+      if(!isSwipe){ctx.shadowColor=trackCol;ctx.shadowBlur=14;}
+      ctx.fillStyle=!isSwipe?'rgba(245,158,11,0.22)':'rgba(245,158,11,0.04)';
+      rr(mtRX,mtDY,mtSegW,mtH,7);ctx.fill();
+      ctx.strokeStyle=trackCol;ctx.lineWidth=!isSwipe?1.8:0.7;
+      rr(mtRX,mtDY,mtSegW,mtH,7);ctx.stroke();
+      ctx.shadowBlur=0;ctx.fillStyle=trackCol;
+      ctx.font="bold 9px 'Orbitron',sans-serif";
+      ctx.textAlign='center';ctx.textBaseline='middle';
+      ctx.fillText('☝  TRACK',mtRX+mtSegW/2,mtDY+mtH/2);
+      ctx.restore();
+    }
+
     // ── Horizon "engine idle" breath — subtle glow at the vanishing point ──
     // Pulses gently to hint that the world is still alive behind the buttons
     const idleBreath=0.06+fastSin(t*0.05)*0.04;
@@ -4361,11 +4483,13 @@ function drawSplash(){
     // Store button rects at their RESTING positions for touch/click hit-testing
     // (the slide finishes quickly, so resting coords are always safe to use)
     _splashMenuBtns={
-      play:  {x:pbX,   y:pbRestY,  w:pbW,  h:pbH},
-      guide: {x:sbLX,  y:sbRow1Y,  w:sbW,  h:sbH},
-      stats: {x:sbRX,  y:sbRow1Y,  w:sbW,  h:sbH},
-      shop:  {x:sbLX,  y:sbRow2Y,  w:sbW,  h:sbH},
-      howto: {x:sbRX,  y:sbRow2Y,  w:sbW,  h:sbH},
+      play:      {x:pbX,           y:pbRestY,  w:pbW,     h:pbH},
+      guide:     {x:sbLX,          y:sbRow1Y,  w:sbW,     h:sbH},
+      stats:     {x:sbRX,          y:sbRow1Y,  w:sbW,     h:sbH},
+      shop:      {x:sbLX,          y:sbRow2Y,  w:sbW,     h:sbH},
+      howto:     {x:sbRX,          y:sbRow2Y,  w:sbW,     h:sbH},
+      modeSwipe: {x:mtX,           y:mtY,      w:mtSegW,  h:mtH},
+      modeTrack: {x:mtX+mtSegW+mtGap, y:mtY,   w:mtSegW,  h:mtH},
     };
   } else {
     _splashMenuBtns=null;
