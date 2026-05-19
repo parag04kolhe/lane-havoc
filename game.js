@@ -448,10 +448,12 @@ let playerName      = loadLS('rr_player_name',''); // saved display name
 let _llPendingScore = 0;                           // score waiting for name entry
 
 // Leaderboard screen state
-let lbScores  = [];  // [{rank, score, name}]
-let lbLoading = false;
-let lbError   = '';
-let lbMyRank  = 0;
+let lbScores      = [];  // [{rank, score, name}]
+let lbLoading     = false;
+let lbError       = '';
+let lbMyRank      = 0;
+let lbScrollY     = 0;   // scroll offset for leaderboard list (pixels)
+let lbLastRunScore= 0;   // the player's most recent run score (shown below top 20)
 
 // Fetch top 20 scores ordered by score descending
 async function _llFetchScores(){
@@ -502,7 +504,7 @@ async function _llSubmitWithName(name,score){
 // Open the leaderboard screen and fetch scores
 async function _llOpenLeaderboard(){
   gst=ST.LEADERBOARD;
-  lbScores=[];lbLoading=true;lbError='';lbMyRank=0;
+  lbScores=[];lbLoading=true;lbError='';lbMyRank=0;lbScrollY=0;
   try{
     lbScores=await _llFetchScores();
     if(playerName){
@@ -1243,6 +1245,16 @@ canvas.addEventListener('touchmove', e=>{
   if(gst===ST.INTRO){
     const dy=(t.clientY-tsy)*(H/canvas.getBoundingClientRect().height);
     introScrollY=clamp(introScrollY-dy*0.6,0,Math.max(0,16*44-300));
+    tsx=t.clientX;tsy=t.clientY;
+  }
+  // Leaderboard list scroll
+  if(gst===ST.LEADERBOARD){
+    const dy=(t.clientY-tsy)*(H/canvas.getBoundingClientRect().height);
+    const rowH=30, rows=lbScores.length, extraRow=46;
+    const totalContentH=rows*rowH+extraRow;
+    const visibleH=H-200;
+    const maxScroll=Math.max(0,totalContentH-visibleH);
+    lbScrollY=clamp(lbScrollY-dy,0,maxScroll);
     tsx=t.clientX;tsy=t.clientY;
   }
   e.preventDefault(); // scoped: prevents scroll while finger is on canvas

@@ -5259,6 +5259,7 @@ function drawLeaderboard(){
   }
   ctx.strokeStyle='rgba(167,139,250,0.25)';ctx.lineWidth=1;
   ctx.beginPath();ctx.moveTo(PX+16,PY+65);ctx.lineTo(PX+PW-16,PY+65);ctx.stroke();
+
   if(lbLoading){
     const pulse=0.5+fastSin(frameCount*0.12)*0.5;
     ctx.globalAlpha=0.4+pulse*0.6;
@@ -5274,41 +5275,87 @@ function drawLeaderboard(){
     ctx.font="bold 10px 'Rajdhani',sans-serif";ctx.fillStyle='#475569';
     ctx.fillText('No scores yet — be the first!',W/2,PY+PH/2);
   }else{
-    const rowTop=PY+80;
-    ctx.font="bold 8px 'Orbitron',sans-serif";ctx.fillStyle='#475569';
-    ctx.textAlign='left';ctx.fillText('#',PX+16,rowTop);
-    ctx.fillText('NAME',PX+52,rowTop);
-    ctx.textAlign='right';ctx.fillText('SCORE',PX+PW-16,rowTop);
+    // ── Column headers (fixed, not scrollable) ──
+    const headerY=PY+80;
+    ctx.font="bold 9px 'Orbitron',sans-serif";ctx.fillStyle='#475569';
+    ctx.textAlign='left';ctx.fillText('#',PX+16,headerY);
+    ctx.fillText('NAME',PX+54,headerY);
+    ctx.textAlign='right';ctx.fillText('SCORE',PX+PW-16,headerY);
+
+    // ── Scrollable rows area ──
+    const rowH=30; // row height
+    const listTop=headerY+10;  // top of scrollable area
+    const listBottom=H-110;    // bottom of scrollable area (above close btn)
+    const clipH=listBottom-listTop;
+
+    // Clipping region for scrollable list
+    ctx.save();
+    ctx.beginPath();ctx.rect(PX+8,listTop,PW-16,clipH);ctx.clip();
+
     lbScores.forEach((s,i)=>{
-      const ry=rowTop+18+i*24;
-      if(ry>PY+PH-60)return;
+      const ry=listTop+i*rowH+rowH-8-lbScrollY;
+      // Skip rows outside clip
+      if(ry+rowH<listTop||ry>listBottom)return;
       const isMe=playerName&&s.name===playerName;
       if(isMe){
         ctx.fillStyle='rgba(167,139,250,0.12)';
-        rr(PX+10,ry-14,PW-20,20,4);ctx.fill();
+        rr(PX+10,ry-20,PW-20,rowH,4);ctx.fill();
       }
-      const rankCol=s.rank===1?'#fbbf24':s.rank===2?'#94a3b8':s.rank===3?'#cd7c2f':'#475569';
-      ctx.font=s.rank<=3?"bold 11px 'Orbitron',sans-serif":"600 9px 'Orbitron',sans-serif";
+      // Rank medal/number
+      const rankCol=s.rank===1?'#fbbf24':s.rank===2?'#94a3b8':s.rank===3?'#cd7c2f':'#64748b';
+      ctx.font=s.rank<=3?"bold 13px 'Orbitron',sans-serif":"700 11px 'Orbitron',sans-serif";
       ctx.fillStyle=rankCol;ctx.textAlign='left';
       ctx.fillText(s.rank<=3?['🥇','🥈','🥉'][s.rank-1]:'#'+s.rank,PX+14,ry);
-      ctx.font=isMe?"bold 10px 'Rajdhani',sans-serif":"600 10px 'Rajdhani',sans-serif";
+      // Name
+      ctx.font=isMe?"bold 13px 'Rajdhani',sans-serif":"600 13px 'Rajdhani',sans-serif";
       ctx.fillStyle=isMe?'#c4b5fd':'#e2e8f0';
       const _nm=s.name.length>14?s.name.substring(0,13)+'…':s.name;
-      ctx.textAlign='left';ctx.fillText(_nm,PX+52,ry);
-      ctx.font="bold 10px 'Orbitron',sans-serif";
+      ctx.textAlign='left';ctx.fillText(_nm,PX+54,ry);
+      // Score
+      ctx.font="bold 13px 'Orbitron',sans-serif";
       ctx.fillStyle=isMe?'#c4b5fd':'#06b6d4';
       ctx.textAlign='right';ctx.fillText(s.score,PX+PW-16,ry);
     });
-    if(lbMyRank>20&&playerName){
-      ctx.textAlign='center';
-      ctx.fillStyle='rgba(15,20,40,0.85)';
-      rr(PX+10,PY+PH-72,PW-20,22,6);ctx.fill();
-      ctx.strokeStyle='rgba(167,139,250,0.4)';ctx.lineWidth=1;
-      rr(PX+10,PY+PH-72,PW-20,22,6);ctx.stroke();
-      ctx.font="bold 9px 'Orbitron',sans-serif";ctx.fillStyle='#a78bfa';
-      ctx.fillText('YOUR RANK: #'+lbMyRank,W/2,PY+PH-57);
+
+    // ── Player's last run score (below the list, still inside scroll clip) ──
+    if(lbLastRunScore>0&&playerName){
+      const lastY=listTop+lbScores.length*rowH+rowH-8-lbScrollY;
+      if(lastY>=listTop-rowH&&lastY<=listBottom+rowH){
+        // Separator line
+        ctx.strokeStyle='rgba(167,139,250,0.20)';ctx.lineWidth=1;
+        ctx.beginPath();ctx.moveTo(PX+16,lastY-20);ctx.lineTo(PX+PW-16,lastY-20);ctx.stroke();
+        // "YOUR LAST RUN" label
+        ctx.font="600 9px 'Rajdhani',sans-serif";ctx.fillStyle='#64748b';
+        ctx.textAlign='left';ctx.fillText('YOUR LAST RUN',PX+16,lastY-4);
+        // Name (same row)
+        ctx.font="bold 14px 'Rajdhani',sans-serif";ctx.fillStyle='#a78bfa';
+        const _myNm=playerName.length>14?playerName.substring(0,13)+'…':playerName;
+        ctx.textAlign='left';ctx.fillText(_myNm,PX+54,lastY+14);
+        // Score (right aligned)
+        ctx.font="bold 14px 'Orbitron',sans-serif";ctx.fillStyle='#a78bfa';
+        ctx.textAlign='right';ctx.fillText(lbLastRunScore,PX+PW-16,lastY+14);
+      }
+    }
+
+    ctx.restore();
+
+    // ── Scroll indicator dot (right edge, only when scrollable) ──
+    const rowH2=30, totalRows=lbScores.length+(lbLastRunScore>0?1:0);
+    const totalContentH=totalRows*rowH2+40;
+    const clipH2=listBottom-listTop;
+    if(totalContentH>clipH2){
+      const maxScroll=totalContentH-clipH2;
+      const trackH=clipH2-20;
+      const thumbH=Math.max(30,trackH*(clipH2/totalContentH));
+      const thumbY=listTop+10+(lbScrollY/maxScroll)*(trackH-thumbH);
+      ctx.fillStyle='rgba(167,139,250,0.18)';
+      ctx.beginPath();ctx.roundRect(PX+PW-8,listTop+10,4,trackH,2);ctx.fill();
+      ctx.fillStyle='rgba(167,139,250,0.65)';
+      ctx.beginPath();ctx.roundRect(PX+PW-8,thumbY,4,thumbH,2);ctx.fill();
     }
   }
+
+  // ── CLOSE button ──
   const cbY=H-56,cbW=120,cbH=32;
   ctx.save();
   ctx.fillStyle='rgba(15,20,40,0.90)';rr(W/2-cbW/2,cbY,cbW,cbH,8);ctx.fill();
