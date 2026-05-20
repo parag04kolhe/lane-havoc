@@ -19,7 +19,7 @@
    DRAW — BACKGROUND (flat dark fill)
 ══════════════════════════════════════════════ */
 function drawBackground(){
-  ctx.fillStyle='#0a0c14';
+  ctx.fillStyle='#070910';
   ctx.fillRect(0,0,W,H);
 }
 
@@ -120,9 +120,10 @@ function drawWeatherOverlay(){
   }
 }
 function _drawRain(alpha){
-  // Wet overlay
+  // Full-screen blue-tinted wet atmosphere
   ctx.save();ctx.globalAlpha=0.07*alpha;
   ctx.fillStyle='rgba(130,160,200,1)';ctx.fillRect(0,0,W,H);ctx.restore();
+
   // Rain streaks
   ctx.save();ctx.strokeStyle=`rgba(160,190,230,${0.50*alpha})`;
   ctx.lineWidth=1;
@@ -131,11 +132,39 @@ function _drawRain(alpha){
     ctx.beginPath();ctx.moveTo(d.x,d.y);ctx.lineTo(d.x-d.len*0.22,d.y+d.len);ctx.stroke();
   }
   ctx.restore();
-  // Puddle ripple hint on road
-  ctx.save();ctx.globalAlpha=0.04*alpha;
-  ctx.fillStyle='rgba(120,160,200,1)';
-  ctx.fillRect(ROAD_L,0,ROAD_W,H);
+
+  // ── Wet road surface — road only, stronger blue sheen ──
+  if(!GC.wetRoad){
+    const wg=ctx.createLinearGradient(ROAD_L,0,ROAD_R,0);
+    wg.addColorStop(0,'rgba(40,70,120,0.18)');
+    wg.addColorStop(0.3,'rgba(60,100,160,0.28)');
+    wg.addColorStop(0.5,'rgba(80,120,190,0.32)');
+    wg.addColorStop(0.7,'rgba(60,100,160,0.28)');
+    wg.addColorStop(1,'rgba(40,70,120,0.18)');
+    GC.wetRoad=wg;
+  }
+  ctx.save();ctx.globalAlpha=alpha;
+  ctx.fillStyle=GC.wetRoad;ctx.fillRect(ROAD_L,0,ROAD_W,H);
   ctx.restore();
+
+  // ── Animated wet shimmer glints — horizontal light flashes on road ──
+  // Only on high/mid tier (cheap even then: just 3 rects)
+  if(PERF.tier!=='low'){
+    ctx.save();
+    // Glints scroll downward at a different speed to rain (parallax)
+    const glintOff=(frameCount*2.2)%120;
+    const glints=[
+      {y:glintOff,       w:60, x:ROAD_L+30,  a:0.06},
+      {y:glintOff+55,    w:40, x:ROAD_L+100, a:0.04},
+      {y:(glintOff+90)%120+H*0.3, w:50, x:ROAD_L+160, a:0.05},
+    ];
+    ctx.strokeStyle='rgba(180,210,255,1)';ctx.lineWidth=1;
+    for(const g of glints){
+      ctx.globalAlpha=g.a*alpha;
+      ctx.beginPath();ctx.moveTo(g.x,g.y);ctx.lineTo(g.x+g.w,g.y);ctx.stroke();
+    }
+    ctx.restore();
+  }
 }
 function _drawFog(alpha){
   const fa=alpha*0.75;
@@ -207,60 +236,120 @@ function _drawCone(x,y){
   ctx.fillStyle='#2a2a2a';ctx.fillRect(x-9,y,18,3);
 }
 
+/* ══════════════════════════════════════════════
+   DRAW — HEADLIGHT REFLECTION STREAKS
+   Thin vertical light columns on dry road at night.
+   Simulates headlights reflecting off dark asphalt.
+   Cached gradients, 4 fillRect calls — very cheap.
+══════════════════════════════════════════════ */
+function _drawHeadlightStreaks(){
+  // Build once per session
+  if(!GC.hlStreak1){
+    const g1=ctx.createLinearGradient(0,0,16,0);
+    g1.addColorStop(0,'transparent');
+    g1.addColorStop(0.5,'rgba(210,225,255,0.055)');
+    g1.addColorStop(1,'transparent');
+    GC.hlStreak1=g1;
+
+    const g2=ctx.createLinearGradient(0,0,10,0);
+    g2.addColorStop(0,'transparent');
+    g2.addColorStop(0.5,'rgba(210,225,255,0.038)');
+    g2.addColorStop(1,'transparent');
+    GC.hlStreak2=g2;
+
+    const g3=ctx.createLinearGradient(0,0,8,0);
+    g3.addColorStop(0,'transparent');
+    g3.addColorStop(0.5,'rgba(210,225,255,0.028)');
+    g3.addColorStop(1,'transparent');
+    GC.hlStreak3=g3;
+  }
+  // Fixed vertical streaks aligned near lane markers — always visible, no per-frame calc
+  ctx.fillStyle=GC.hlStreak1; ctx.fillRect(116,0,16,H); // left of lane 2 dash
+  ctx.fillStyle=GC.hlStreak2; ctx.fillRect(197,0,10,H); // centre dash
+  ctx.fillStyle=GC.hlStreak3; ctx.fillRect(275,0,8,H);  // right lane
+}
+
 function drawRoad(){
-  // ── Side kerb strips — flat dark fill ────────────────────────────────
-  ctx.fillStyle='#12151e';
+  // ── Side kerb strips — very dark ─────────────────────────────────────
+  ctx.fillStyle='#090b11';
   ctx.fillRect(0,0,ROAD_L,H);
   ctx.fillRect(ROAD_R,0,W-ROAD_R,H);
 
-  // ── Road body — cached gradient ──────────────────────────────────────
-  ctx.fillStyle=GC.road;ctx.fillRect(ROAD_L,0,ROAD_W,H);
+  // ── Road body — darker asphalt (GC.roadDark cached once here) ────────
+  if(!GC.roadDark){
+    const rg=ctx.createLinearGradient(ROAD_L,0,ROAD_R,0);
+    rg.addColorStop(0,'#0d1016');
+    rg.addColorStop(0.15,'#111520');
+    rg.addColorStop(0.5,'#14181f');
+    rg.addColorStop(0.85,'#111520');
+    rg.addColorStop(1,'#0d1016');
+    GC.roadDark=rg;
+  }
+  ctx.fillStyle=GC.roadDark; ctx.fillRect(ROAD_L,0,ROAD_W,H);
 
-  // Subtle horizontal speed lines (dark bands)
-  ctx.save();ctx.globalAlpha=0.06;ctx.fillStyle='#000';
-  const bandH=80,bandOff=dashOff%bandH;
-  for(let y=-bandH+bandOff;y<H+bandH;y+=bandH)ctx.fillRect(ROAD_L,y,ROAD_W,bandH*0.45);
+  // ── Subtle asphalt grain — dark horizontal bands ──────────────────────
+  ctx.save(); ctx.globalAlpha=0.05; ctx.fillStyle='#000';
+  const bandH=70, bandOff=dashOff%bandH;
+  for(let y=-bandH+bandOff; y<H+bandH; y+=bandH)
+    ctx.fillRect(ROAD_L,y,ROAD_W,bandH*0.42);
   ctx.restore();
 
-  // Kerb edge markers — red/white stripes right at road boundary
-  const stripeH=18,stripeOff=Math.floor(dashOff%stripeH);
-  for(let y=-stripeH+stripeOff;y<H+stripeH;y+=stripeH){
+  // ── Headlight reflection streaks (dry road only, not during rain) ────
+  if(PERF.tier!=='low' && weatherType!=='rain'){
+    _drawHeadlightStreaks();
+  }
+
+  // ── Kerb edge markers — red/white stripes at road boundary ───────────
+  const stripeH=18, stripeOff=Math.floor(dashOff%stripeH);
+  for(let y=-stripeH+stripeOff; y<H+stripeH; y+=stripeH){
     const evenRow=Math.floor((y+stripeH)/stripeH)%2===0;
     ctx.fillStyle=evenRow?'#c0392b':'#ecf0f1';
     ctx.fillRect(ROAD_L-6,y,6,stripeH);
     ctx.fillRect(ROAD_R,y,6,stripeH);
   }
 
-  // Edge lines – bright amber with subtle glow
+  // ── Edge lines — amber glow (shadowBlur only on PERF.shadows) ────────
   ctx.save();
-  ctx.shadowColor='rgba(245,158,11,0.5)';ctx.shadowBlur=8;
-  ctx.strokeStyle='#f59e0b';ctx.lineWidth=2.5;ctx.setLineDash([]);
-  ctx.beginPath();ctx.moveTo(ROAD_L,0);ctx.lineTo(ROAD_L,H);ctx.stroke();
-  ctx.beginPath();ctx.moveTo(ROAD_R,0);ctx.lineTo(ROAD_R,H);ctx.stroke();
+  if(PERF.shadows){ ctx.shadowColor='rgba(245,158,11,0.5)'; ctx.shadowBlur=8; }
+  ctx.strokeStyle='#f59e0b'; ctx.lineWidth=2.5; ctx.setLineDash([]);
+  ctx.beginPath(); ctx.moveTo(ROAD_L,0); ctx.lineTo(ROAD_L,H); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(ROAD_R,0); ctx.lineTo(ROAD_R,H); ctx.stroke();
   ctx.restore();
 
-  // Centre lane dashes — high-contrast white (0.80 opacity for speed readability)
-  ctx.strokeStyle='rgba(255,255,255,0.80)';ctx.lineWidth=1.8;
-  ctx.setLineDash([28,18]);ctx.lineDashOffset=-dashOff;
-  [120,200,280].forEach(x=>{
-    ctx.beginPath();ctx.moveTo(x,0);ctx.lineTo(x,H);ctx.stroke();
-  });
+  // ── Centre lane dashes — bloom on high tier, plain on mid/low ────────
+  ctx.setLineDash([28,18]); ctx.lineDashOffset=-dashOff;
+  if(PERF.shadows){
+    ctx.save();
+    ctx.shadowColor='rgba(255,255,255,0.45)'; ctx.shadowBlur=7;
+    ctx.strokeStyle='rgba(255,255,255,0.92)'; ctx.lineWidth=2.2;
+    [120,200,280].forEach(x=>{
+      ctx.beginPath(); ctx.moveTo(x,0); ctx.lineTo(x,H); ctx.stroke();
+    });
+    ctx.restore();
+  } else {
+    ctx.strokeStyle='rgba(255,255,255,0.80)'; ctx.lineWidth=1.8;
+    [120,200,280].forEach(x=>{
+      ctx.beginPath(); ctx.moveTo(x,0); ctx.lineTo(x,H); ctx.stroke();
+    });
+  }
   ctx.setLineDash([]);
 
-  // Road sheen – cached gradient
-  ctx.fillStyle=GC.roadSheen;ctx.fillRect(ROAD_L,0,ROAD_W,H);
+  // ── Road sheen — centre highlight ────────────────────────────────────
+  ctx.fillStyle=GC.roadSheen; ctx.fillRect(ROAD_L,0,ROAD_W,H);
 
-  // ── Light-source depth overlay — lighter at horizon (top), darker near player (bottom) ──
-  // Creates instant depth perception: road recedes into distance at top
+  // ── Depth + atmosphere overlay ────────────────────────────────────────
+  // Blue-cool tint at horizon (distance), warm dark near player (bottom)
+  // This is the single most impactful depth cue — rebuild if not cached
   if(!GC.roadDepth){
     const dg=ctx.createLinearGradient(0,0,0,H);
-    dg.addColorStop(0,'rgba(255,255,255,0.07)');  // slightly brighter at horizon
-    dg.addColorStop(0.35,'rgba(255,255,255,0.01)');
-    dg.addColorStop(0.65,'rgba(0,0,0,0.04)');
-    dg.addColorStop(1,'rgba(0,0,0,0.13)');         // noticeably darker near player
+    dg.addColorStop(0,'rgba(80,110,200,0.10)');   // cool blue at horizon
+    dg.addColorStop(0.20,'rgba(60,80,160,0.05)');
+    dg.addColorStop(0.50,'rgba(0,0,0,0.02)');
+    dg.addColorStop(0.75,'rgba(0,0,0,0.06)');
+    dg.addColorStop(1,'rgba(0,0,0,0.20)');          // noticeably darker near player
     GC.roadDepth=dg;
   }
-  ctx.fillStyle=GC.roadDepth;ctx.fillRect(ROAD_L,0,ROAD_W,H);
+  ctx.fillStyle=GC.roadDepth; ctx.fillRect(ROAD_L,0,ROAD_W,H);
 }
 
 /* ══════════════════════════════════════════════
