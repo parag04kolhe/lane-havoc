@@ -4491,6 +4491,70 @@ function drawSplash(){
       modeSwipe: {x:mtX,           y:mtY,      w:mtSegW,  h:mtH},
       modeTrack: {x:mtX+mtSegW+mtGap, y:mtY,   w:mtSegW,  h:mtH},
     };
+
+    // ── Sensitivity callout popup (appears when TRACK is tapped) ──
+    if(_trackSensPopup&&playMode==='track'&&mtF>0.01){
+      const popW=178,popH=74,rowH=22;
+      // Centre of TRACK segment: W/2 + half-gap + half-segment-width
+      const _tCX=W/2+mtGap/2+mtSegW/2; // = 200+5+64 = 269
+      const popX=clamp(_tCX-popW/2,4,W-popW-4);
+      const popY=mtY+mtH+6; // 6px below the toggle pill
+
+      ctx.save();ctx.globalAlpha=mtF;
+
+      // ── Upward triangle arrow linking popup to TRACK button ──
+      ctx.fillStyle='rgba(14,18,32,0.97)';
+      ctx.beginPath();
+      ctx.moveTo(_tCX-7,popY);ctx.lineTo(_tCX+7,popY);ctx.lineTo(_tCX,popY-7);
+      ctx.closePath();ctx.fill();
+
+      // ── Popup box ──
+      ctx.shadowColor='#f59e0b';ctx.shadowBlur=16;
+      ctx.fillStyle='rgba(14,18,32,0.97)';
+      rr(popX,popY,popW,popH,9);ctx.fill();
+      ctx.shadowBlur=0;
+      ctx.strokeStyle='rgba(245,158,11,0.55)';ctx.lineWidth=1.3;
+      rr(popX,popY,popW,popH,9);ctx.stroke();
+
+      // ── Header ──
+      ctx.font="700 7px 'Orbitron',sans-serif";
+      ctx.textAlign='center';ctx.textBaseline='middle';
+      ctx.fillStyle='rgba(245,158,11,0.65)';
+      ctx.fillText('SENSITIVITY',popX+popW/2,popY+11);
+
+      // ── Divider ──
+      ctx.strokeStyle='rgba(245,158,11,0.18)';ctx.lineWidth=0.7;
+      ctx.beginPath();ctx.moveTo(popX+10,popY+18);ctx.lineTo(popX+popW-10,popY+18);ctx.stroke();
+
+      // ── Two option rows ──
+      [{label:'HIGH',sub:'instant tracking',val:'high',idx:0},
+       {label:'LOW', sub:'stepped tracking', val:'low', idx:1}
+      ].forEach(({label,sub,val,idx})=>{
+        const ry=popY+20+idx*rowH;
+        const act=trackSensitivity===val;
+        // Active row tint
+        if(act){ctx.fillStyle='rgba(245,158,11,0.09)';rr(popX+4,ry,popW-8,rowH-1,4);ctx.fill();}
+        // Radio circle outer
+        ctx.strokeStyle=act?'#f59e0b':'rgba(255,255,255,0.25)';ctx.lineWidth=1.2;
+        ctx.beginPath();ctx.arc(popX+16,ry+rowH/2,4,0,Math.PI*2);ctx.stroke();
+        // Radio circle filled dot
+        if(act){ctx.fillStyle='#f59e0b';ctx.beginPath();ctx.arc(popX+16,ry+rowH/2,2,0,Math.PI*2);ctx.fill();}
+        // Option label
+        ctx.fillStyle=act?'#fffbe0':'rgba(255,255,255,0.45)';
+        ctx.font=(act?'700':'500')+" 8px 'Orbitron',sans-serif";
+        ctx.textAlign='left';ctx.textBaseline='middle';
+        ctx.fillText(label,popX+26,ry+rowH/2);
+        // Sub-description
+        ctx.fillStyle='rgba(255,255,255,0.30)';
+        ctx.font="500 8.5px 'Rajdhani',sans-serif";
+        ctx.fillText(sub,popX+72,ry+rowH/2);
+      });
+      ctx.restore();
+
+      // Register popup hit rects for next frame's input detection
+      _splashMenuBtns.sensHigh={x:popX+4,y:popY+18,        w:popW-8,h:rowH};
+      _splashMenuBtns.sensLow ={x:popX+4,y:popY+18+rowH,   w:popW-8,h:rowH};
+    }
   } else {
     _splashMenuBtns=null;
     // Progress bar while launching

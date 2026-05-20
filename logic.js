@@ -89,6 +89,7 @@ function initVars(){
   _ftMoveCooldown=0;
   _mode2HintPhase=0;
   _mode2HintTimer=0;
+  _trackSensPopup=false;
   _updateComboBadge();
 }
 function reset(){
@@ -1348,11 +1349,21 @@ function update(dt){
 
   // ── Finger Track mode: per-frame car movement toward finger lane ──
   if(playMode==='track'&&_ftActiveLane!==-1){
-    if(_ftMoveCooldown>0) _ftMoveCooldown-=dt;
-    else if(player.lane!==_ftActiveLane){
-      if(player.lane>_ftActiveLane) doLeft();
-      else doRight();
-      _ftMoveCooldown=8; // ~130ms between auto lane steps
+    if(trackSensitivity==='high'){
+      // HIGH: direct lane set each frame — ~1-frame lag (~16ms), any distance
+      if(!tutNitroMoveLocked&&!tutRewindActive&&player.lane!==_ftActiveLane){
+        const _mxLane=weatherType==='roadworks'?2:3;
+        const _tgt=Math.min(_ftActiveLane,_mxLane);
+        if(player.lane!==_tgt){player.lane=_tgt;snd('switch');haptic(18);}
+      }
+    } else {
+      // LOW: one lane per step with cooldown — ~133ms per lane
+      if(_ftMoveCooldown>0) _ftMoveCooldown-=dt;
+      else if(player.lane!==_ftActiveLane){
+        if(player.lane>_ftActiveLane) doLeft();
+        else doRight();
+        _ftMoveCooldown=8;
+      }
     }
   }
 
