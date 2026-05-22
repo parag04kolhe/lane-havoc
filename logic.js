@@ -604,10 +604,30 @@ loadMission();
     }catch(e){}
   }
 
+  function doAutoResume(){
+    try{
+      try{ if(typeof suppressMenuMusic!=='undefined') suppressMenuMusic=false; }catch(e){}
+      if(typeof AC!=='undefined' && AC && AC.state==='suspended'){
+        try{ AC.resume(); }catch(e){}
+      }
+      const now=(AC&&AC.currentTime)||0;
+      try{ if(typeof masterGain!=='undefined' && masterGain && masterGain.gain) masterGain.gain.setTargetAtTime(bgMuted?0:1, now, 0.08); }catch(e){}
+      if(typeof gst!=='undefined'){
+        if(gst===ST.SPLASH||gst===ST.INTRO||gst===ST.HOWTO||gst===ST.STATS||gst===ST.SHOP||gst===ST.GAMEOVER){
+          if(typeof startMenuMusic==='function') startMenuMusic();
+        } else if(gst===ST.PLAYING || gst===ST.RESPAWNING){
+          if(typeof updateMusicForTheme==='function') updateMusicForTheme();
+        }
+      }
+    }catch(e){}
+  }
+
   // Page lifecycle: hide/blur/pagehide — best-effort coverage for mobile app switch and lock
-  document.addEventListener('visibilitychange', function(){ if(document.hidden) doAutoPause(); });
+  document.addEventListener('visibilitychange', function(){ if(document.hidden) doAutoPause(); else doAutoResume(); });
   window.addEventListener('blur', doAutoPause);
+  window.addEventListener('focus', doAutoResume);
   window.addEventListener('pagehide', doAutoPause);
+  window.addEventListener('pageshow', doAutoResume);
   // Some browsers support 'freeze' for page lifecycle — treat it the same as hidden
   document.addEventListener('freeze', doAutoPause);
 })();
