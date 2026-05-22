@@ -580,6 +580,27 @@ function _doShareRunSummary(){
 }
 loadMission();
 
+// Auto-pause when the page/tab or app loses focus (mobile app switch, call, background)
+(function(){
+  function doAutoPause(){
+    try{
+      // Only pause if the game is actively running (playing or respawning)
+      if(typeof gst!=='undefined' && (gst===ST.PLAYING || gst===ST.RESPAWNING)){
+        gamePaused=true;
+        const pb=document.getElementById('pauseBtn'); if(pb) pb.textContent='▶';
+        // Mute audio like the normal pause flow (respecting masterGain if present)
+        if(typeof masterGain!=='undefined' && masterGain && (typeof AC!=='undefined'&&AC)){
+          try{ masterGain.gain.setTargetAtTime(0, AC.currentTime, 0.05); }catch(e){}
+        }
+      }
+    }catch(e){}
+  }
+
+  document.addEventListener('visibilitychange', function(){ if(document.hidden) doAutoPause(); });
+  window.addEventListener('blur', doAutoPause);
+  window.addEventListener('pagehide', doAutoPause);
+})();
+
 
 /* ══════════════════════════════════════════════
    SPAWN — NEW OBSTACLE TYPES
