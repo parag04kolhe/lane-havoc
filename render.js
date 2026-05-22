@@ -2485,21 +2485,21 @@ function draw(){
         ctx.save();
         ctx.translate(_pDrawX,_pDrawY); ctx.scale(jumpScale,jumpScale); ctx.translate(-_pDrawX,-_pDrawY);
         ctx.translate(_pDrawX,_pDrawY); ctx.rotate(jumpPhase*0.04+playerTilt); ctx.translate(-_pDrawX,-_pDrawY);
-        _drawCarImg(_pDrawX, _pDrawY, window._CAR_PLAYER, 44, 76);
+        _drawCarImg(_pDrawX, _pDrawY, window._CAR_PLAYER, 50, 84);
         ctx.restore();
       } else {
         if(Math.abs(playerTilt)>0.004){
           ctx.save(); ctx.translate(_pDrawX,_pDrawY); ctx.rotate(playerTilt); ctx.translate(-_pDrawX,-_pDrawY);
-          _drawCarImg(_pDrawX, _pDrawY, window._CAR_PLAYER, 44, 76);
+          _drawCarImg(_pDrawX, _pDrawY, window._CAR_PLAYER, 50, 84);
           ctx.restore();
         } else {
-          _drawCarImg(_pDrawX, _pDrawY, window._CAR_PLAYER, 44, 76);
+          _drawCarImg(_pDrawX, _pDrawY, window._CAR_PLAYER, 50, 84);
         }
       }
       // Damage overlay on image
       if(dmgProg>0){
         ctx.save(); ctx.globalAlpha=dmgProg*0.55; ctx.fillStyle='rgba(255,60,0,1)';
-        rr(_pDrawX-22,_pDrawY-38,44,76,8); ctx.fill(); ctx.restore();
+        rr(_pDrawX-25,_pDrawY-42,50,84,8); ctx.fill(); ctx.restore();
       }
       // Gun barrel overlay (keep existing logic from drawCar)
       if(typeof gunActive!=='undefined' && gunActive && dmgProg<0.1){
@@ -2507,7 +2507,7 @@ function draw(){
         const _gPulse=0.35+fastSin(frameCount*0.14)*0.15;
         ctx.shadowColor='#ef4444';ctx.shadowBlur=20;
         ctx.strokeStyle=`rgba(239,68,68,${_gPulse})`;ctx.lineWidth=2;
-        rr(_pDrawX-23,_pDrawY-39,46,78,9);ctx.stroke(); ctx.shadowBlur=0;
+        rr(_pDrawX-26,_pDrawY-43,52,86,9);ctx.stroke(); ctx.shadowBlur=0;
         const _brlX=_pDrawX-2.5,_brlY=_pDrawY-68;
         ctx.fillStyle='#1a1c28'; rr(_brlX,_brlY,5,13,2);ctx.fill();
         ctx.shadowColor='#ef4444';ctx.shadowBlur=10;ctx.fillStyle='#ef4444';
