@@ -319,10 +319,28 @@ function _drawHeadlightBeam(cx, cy){
 }
 function _drawTaillightGlow(cx, cy){
   if(PERF.tier==='low') return;
+  // ── Road glow pool — wide soft radial behind car ──
   ctx.save();
-  ctx.globalAlpha=0.28;
-  ctx.fillStyle='rgba(255,25,0,1)';
-  ctx.beginPath(); ctx.ellipse(cx, cy-54, 18, 9, 0, 0, Math.PI*2); ctx.fill();
+  const rg = ctx.createRadialGradient(cx, cy-46, 2, cx, cy-46, 30);
+  rg.addColorStop(0,   'rgba(255,20,0,0.45)');
+  rg.addColorStop(0.5, 'rgba(220,10,0,0.18)');
+  rg.addColorStop(1,   'transparent');
+  ctx.fillStyle = rg;
+  ctx.beginPath(); ctx.ellipse(cx, cy-46, 30, 12, 0, 0, Math.PI*2); ctx.fill();
+  ctx.restore();
+  // ── Two taillight units drawn on rear of car ──
+  // Left unit
+  ctx.save();
+  if(PERF.shadows){ ctx.shadowColor='rgba(255,30,0,0.9)'; ctx.shadowBlur=8; }
+  ctx.fillStyle='#ff1a00';
+  rr(cx-18, cy-42, 10, 4, 1); ctx.fill();
+  // Right unit
+  rr(cx+8,  cy-42, 10, 4, 1); ctx.fill();
+  // Bright inner highlight
+  ctx.fillStyle='rgba(255,160,120,0.85)';
+  ctx.fillRect(cx-17, cy-42, 8, 2);
+  ctx.fillRect(cx+9,  cy-42, 8, 2);
+  if(PERF.shadows) ctx.shadowBlur=0;
   ctx.restore();
 }
 function _drawPoliceLightGlow(cx, cy){
@@ -2241,11 +2259,33 @@ function drawTruck(t){
     ctx.restore();
   });
 
+  // ── Truck taillights — wide red bar across container rear ──────────────
+  // Container rear = bottom of container (gapY + contH) since truck moves downward
+  const trailY = gapY + contH;
+  if(PERF.tier!=='low'){
+    ctx.save();
+    // Road glow pool beneath container rear
+    const trg = ctx.createRadialGradient(cx, trailY+4, 1, cx, trailY+4, CONT_W*0.9);
+    trg.addColorStop(0,   'rgba(255,20,0,0.40)');
+    trg.addColorStop(0.5, 'rgba(200,10,0,0.15)');
+    trg.addColorStop(1,   'transparent');
+    ctx.fillStyle = trg;
+    ctx.beginPath(); ctx.ellipse(cx, trailY+4, CONT_W*0.9, 10, 0, 0, Math.PI*2); ctx.fill();
+    // Two wide taillight bars across container rear
+    if(PERF.shadows){ ctx.shadowColor='rgba(255,30,0,0.9)'; ctx.shadowBlur=10; }
+    ctx.fillStyle='#ff1a00';
+    rr(contX+2,    trailY-4, 14, 4, 1); ctx.fill(); // left bar
+    rr(contX+CONT_W-16, trailY-4, 14, 4, 1); ctx.fill(); // right bar
+    // Bright inner highlight
+    ctx.fillStyle='rgba(255,180,140,0.85)';
+    ctx.fillRect(contX+3,    trailY-4, 12, 1.5);
+    ctx.fillRect(contX+CONT_W-15, trailY-4, 12, 1.5);
+    if(PERF.shadows) ctx.shadowBlur=0;
+    ctx.restore();
+  }
+
   ctx.restore();
 }
-/* ══════════════════════════════════════════════
-   DRAW — BOSS PURSUIT CAR
-══════════════════════════════════════════════ */
 function drawBossCar(bc){
   const cx=bc.x, cy=bc.y;
   const _imgPoliceOk = window._CAR_POLICE && window._CAR_POLICE.complete;
@@ -2685,6 +2725,19 @@ function draw(){
     if(_imgEnemyOk){
       // Draw image-based enemy car (pre-rotated: front at bottom, facing player)
       _drawCarImg(eLaneX, e.y, window._CAR_ENEMY, 44, 76);
+      // ── Taillight units ON car rear (image car, rear = top of screen) ──
+      if(PERF.tier!=='low'){
+        ctx.save();
+        if(PERF.shadows){ ctx.shadowColor='rgba(255,30,0,0.9)'; ctx.shadowBlur=7; }
+        ctx.fillStyle='#ff1a00';
+        rr(eLaneX-16, e.y-33, 8, 3, 1); ctx.fill();
+        rr(eLaneX+8,  e.y-33, 8, 3, 1); ctx.fill();
+        ctx.fillStyle='rgba(255,180,140,0.80)';
+        ctx.fillRect(eLaneX-15, e.y-33, 6, 1.5);
+        ctx.fillRect(eLaneX+9,  e.y-33, 6, 1.5);
+        if(PERF.shadows) ctx.shadowBlur=0;
+        ctx.restore();
+      }
     } else {
       // Fallback: canvas-drawn car with flip
       ctx.save(); ctx.translate(eLaneX,e.y); ctx.scale(1,-1); ctx.translate(-eLaneX,-e.y);
