@@ -607,7 +607,12 @@ loadMission();
   function resumeAudioAndMusic(){
     try{
       const now=(AC&&AC.currentTime)||0;
+      // Restore masterGain and all bus gains that were zeroed on pause
       try{ if(typeof masterGain!=='undefined' && masterGain && masterGain.gain) masterGain.gain.setTargetAtTime(bgMuted?0:1, now, 0.08); }catch(e){}
+      try{ if(typeof engineBus!=='undefined' && engineBus && engineBus.gain) engineBus.gain.setTargetAtTime(typeof engineBusVol!=='undefined'?engineBusVol:1, now, 0.08); }catch(e){}
+      try{ if(typeof sfxBus!=='undefined' && sfxBus && sfxBus.gain) sfxBus.gain.setTargetAtTime(typeof sfxBusVol!=='undefined'?sfxBusVol:1, now, 0.08); }catch(e){}
+      try{ if(typeof bgBus!=='undefined' && bgBus && bgBus.gain) bgBus.gain.setTargetAtTime(typeof bgBusVol!=='undefined'?bgBusVol:1, now, 0.08); }catch(e){}
+      try{ if(typeof weatherBus!=='undefined' && weatherBus && weatherBus.gain) weatherBus.gain.setTargetAtTime(typeof weatherBusVol!=='undefined'?weatherBusVol:1, now, 0.08); }catch(e){}
       if(typeof gst!=='undefined'){
         if(gst===ST.SPLASH||gst===ST.INTRO||gst===ST.HOWTO||gst===ST.STATS||gst===ST.SHOP||gst===ST.GAMEOVER){
           if(typeof startMenuMusic==='function') startMenuMusic();
