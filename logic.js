@@ -621,6 +621,7 @@ loadMission();
   function doAutoResume(){
     try{
       try{ if(typeof suppressMenuMusic!=='undefined') suppressMenuMusic=false; }catch(e){}
+      try{ if(typeof initAC==='function') initAC(); }catch(e){}
       if(typeof AC!=='undefined' && AC && AC.state==='suspended'){
         try{
           AC.resume().then(resumeAudioAndMusic).catch(resumeAudioAndMusic);

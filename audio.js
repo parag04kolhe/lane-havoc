@@ -24,7 +24,10 @@ let _initACRunning=false; // re-entrancy guard
 function initAC(){
   if(_initACRunning)return;
   _initACRunning=true;
-  if(!AC){try{AC=new(window.AudioContext||window.webkitAudioContext)();}catch(e){_initACRunning=false;return;}}
+  if(!AC||AC.state==='closed'){
+    try{AC=new(window.AudioContext||window.webkitAudioContext)();}catch(e){_initACRunning=false;return;}
+    masterGain=null;engineBus=null;sfxBus=null;bgBus=null;weatherBus=null;almostDeadBus=null;
+  }
   // iOS suspends AudioContext aggressively — resume on every interaction
   try{if(AC.state==='suspended')AC.resume();}catch(e){}
   // Clear any menu-music suppression when the user explicitly unlocks audio
