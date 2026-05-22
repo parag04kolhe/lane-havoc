@@ -2210,7 +2210,7 @@ function drawBossCar(bc){
   shG.addColorStop(0,'rgba(0,0,0,0.7)'); shG.addColorStop(1,'transparent');
   ctx.fillStyle=shG; ctx.beginPath(); ctx.ellipse(cx,cy+6,32,13,0,0,Math.PI*2); ctx.fill(); ctx.restore();
   if(_imgPoliceOk){
-    _drawCarImg(cx, cy, window._CAR_POLICE, 58, 110);
+    _drawCarImg(cx, cy, window._CAR_POLICE, 46, 80);
     // Police light bar overlay on top of image (always canvas-drawn for flicker)
     const flashOn=Math.floor(frameCount/6)%2===0;
     const barY=cy-38;
@@ -2485,21 +2485,21 @@ function draw(){
         ctx.save();
         ctx.translate(_pDrawX,_pDrawY); ctx.scale(jumpScale,jumpScale); ctx.translate(-_pDrawX,-_pDrawY);
         ctx.translate(_pDrawX,_pDrawY); ctx.rotate(jumpPhase*0.04+playerTilt); ctx.translate(-_pDrawX,-_pDrawY);
-        _drawCarImg(_pDrawX, _pDrawY, window._CAR_PLAYER, 58, 110);
+        _drawCarImg(_pDrawX, _pDrawY, window._CAR_PLAYER, 44, 76);
         ctx.restore();
       } else {
         if(Math.abs(playerTilt)>0.004){
           ctx.save(); ctx.translate(_pDrawX,_pDrawY); ctx.rotate(playerTilt); ctx.translate(-_pDrawX,-_pDrawY);
-          _drawCarImg(_pDrawX, _pDrawY, window._CAR_PLAYER, 58, 110);
+          _drawCarImg(_pDrawX, _pDrawY, window._CAR_PLAYER, 44, 76);
           ctx.restore();
         } else {
-          _drawCarImg(_pDrawX, _pDrawY, window._CAR_PLAYER, 58, 110);
+          _drawCarImg(_pDrawX, _pDrawY, window._CAR_PLAYER, 44, 76);
         }
       }
       // Damage overlay on image
       if(dmgProg>0){
         ctx.save(); ctx.globalAlpha=dmgProg*0.55; ctx.fillStyle='rgba(255,60,0,1)';
-        rr(_pDrawX-29,_pDrawY-55,58,110,8); ctx.fill(); ctx.restore();
+        rr(_pDrawX-22,_pDrawY-38,44,76,8); ctx.fill(); ctx.restore();
       }
       // Gun barrel overlay (keep existing logic from drawCar)
       if(typeof gunActive!=='undefined' && gunActive && dmgProg<0.1){
@@ -2507,7 +2507,7 @@ function draw(){
         const _gPulse=0.35+fastSin(frameCount*0.14)*0.15;
         ctx.shadowColor='#ef4444';ctx.shadowBlur=20;
         ctx.strokeStyle=`rgba(239,68,68,${_gPulse})`;ctx.lineWidth=2;
-        rr(_pDrawX-30,_pDrawY-56,60,112,9);ctx.stroke(); ctx.shadowBlur=0;
+        rr(_pDrawX-23,_pDrawY-39,46,78,9);ctx.stroke(); ctx.shadowBlur=0;
         const _brlX=_pDrawX-2.5,_brlY=_pDrawY-68;
         ctx.fillStyle='#1a1c28'; rr(_brlX,_brlY,5,13,2);ctx.fill();
         ctx.shadowColor='#ef4444';ctx.shadowBlur=10;ctx.fillStyle='#ef4444';
@@ -2635,7 +2635,7 @@ function draw(){
     ctx.fillStyle=_esh; ctx.beginPath(); ctx.ellipse(eLaneX,e.y+4,28,11,0,0,Math.PI*2); ctx.fill(); ctx.restore();
     if(_imgEnemyOk){
       // Draw image-based enemy car (pre-rotated: front at bottom, facing player)
-      _drawCarImg(eLaneX, e.y, window._CAR_ENEMY, 56, 108);
+      _drawCarImg(eLaneX, e.y, window._CAR_ENEMY, 44, 76);
     } else {
       // Fallback: canvas-drawn car with flip
       ctx.save(); ctx.translate(eLaneX,e.y); ctx.scale(1,-1); ctx.translate(-eLaneX,-e.y);
