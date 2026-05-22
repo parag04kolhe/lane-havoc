@@ -584,21 +584,28 @@ loadMission();
 (function(){
   function doAutoPause(){
     try{
-      // Only pause if the game is actively running (playing or respawning)
       if(typeof gst!=='undefined' && (gst===ST.PLAYING || gst===ST.RESPAWNING)){
         gamePaused=true;
         const pb=document.getElementById('pauseBtn'); if(pb) pb.textContent='▶';
-        // Mute audio like the normal pause flow (respecting masterGain if present)
-        if(typeof masterGain!=='undefined' && masterGain && (typeof AC!=='undefined'&&AC)){
-          try{ masterGain.gain.setTargetAtTime(0, AC.currentTime, 0.05); }catch(e){}
-        }
+        // Try to suspend the AudioContext to stop all WebAudio playback (best-effort)
+        try{ if(typeof AC!=='undefined' && AC && AC.state==='running') AC.suspend(); }catch(e){}
+        // Also mute available gain buses as a fallback
+        try{ if(typeof masterGain!=='undefined' && masterGain && masterGain.gain) masterGain.gain.setTargetAtTime(0, (AC&&AC.currentTime)||0, 0.05); }catch(e){}
+        try{ if(typeof bgBus!=='undefined' && bgBus && bgBus.gain) bgBus.gain.setTargetAtTime(0, (AC&&AC.currentTime)||0, 0.05); }catch(e){}
+        try{ if(typeof engineBus!=='undefined' && engineBus && engineBus.gain) engineBus.gain.setTargetAtTime(0, (AC&&AC.currentTime)||0, 0.05); }catch(e){}
+        try{ if(typeof sfxBus!=='undefined' && sfxBus && sfxBus.gain) sfxBus.gain.setTargetAtTime(0, (AC&&AC.currentTime)||0, 0.05); }catch(e){}
+        try{ if(typeof weatherBus!=='undefined' && weatherBus && weatherBus.gain) weatherBus.gain.setTargetAtTime(0, (AC&&AC.currentTime)||0, 0.05); }catch(e){}
+        // Keep almost-dead bus quiet by design (it's routed direct) — nothing to do
       }
     }catch(e){}
   }
 
+  // Page lifecycle: hide/blur/pagehide — best-effort coverage for mobile app switch and lock
   document.addEventListener('visibilitychange', function(){ if(document.hidden) doAutoPause(); });
   window.addEventListener('blur', doAutoPause);
   window.addEventListener('pagehide', doAutoPause);
+  // Some browsers support 'freeze' for page lifecycle — treat it the same as hidden
+  document.addEventListener('freeze', doAutoPause);
 })();
 
 
