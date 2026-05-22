@@ -291,12 +291,31 @@ function _drawCarImg(cx, cy, img, iw, ih){
 }
 function _drawHeadlightBeam(cx, cy){
   if(PERF.tier==='low') return;
-  ctx.save();
-  ctx.globalAlpha=0.09;
-  ctx.fillStyle='rgba(200,225,255,1)';
-  ctx.beginPath(); ctx.ellipse(cx-13, cy-65, 13, 36, -0.08, 0, Math.PI*2); ctx.fill();
-  ctx.beginPath(); ctx.ellipse(cx+13, cy-65, 13, 36, 0.08, 0, Math.PI*2); ctx.fill();
-  ctx.restore();
+  // Two cone beams — trapezoid shape, narrow at car, wide far ahead
+  // Gradient fades from bright at car front to fully transparent far away
+  const nearW = 5;    // half-width at car hood
+  const farW  = 24;   // half-width at far end
+  const nearY = cy - 44;   // start just ahead of car hood
+  const farY  = cy - 170;  // how far the beam projects up the screen
+  const _drawBeam = (ox) => {
+    const bg = ctx.createLinearGradient(0, nearY, 0, farY);
+    bg.addColorStop(0,   'rgba(210,230,255,0.20)');
+    bg.addColorStop(0.35,'rgba(190,215,255,0.08)');
+    bg.addColorStop(0.70,'rgba(170,205,255,0.03)');
+    bg.addColorStop(1,   'rgba(160,200,255,0.00)');
+    ctx.save();
+    ctx.fillStyle = bg;
+    ctx.beginPath();
+    ctx.moveTo(cx + ox - nearW, nearY);
+    ctx.lineTo(cx + ox + nearW, nearY);
+    ctx.lineTo(cx + ox + farW,  farY);
+    ctx.lineTo(cx + ox - farW,  farY);
+    ctx.closePath();
+    ctx.fill();
+    ctx.restore();
+  };
+  _drawBeam(-11); // left headlight
+  _drawBeam(+11); // right headlight
 }
 function _drawTaillightGlow(cx, cy){
   if(PERF.tier==='low') return;
@@ -346,19 +365,49 @@ function drawRoad(){
     _drawHeadlightStreaks();
   }
 
-  // ── Kerb edge markers — red/white stripes at road boundary ───────────
-  const stripeH=18, stripeOff=Math.floor(dashOff%stripeH);
-  for(let y=-stripeH+stripeOff; y<H+stripeH; y+=stripeH){
-    const evenRow=Math.floor((y+stripeH)/stripeH)%2===0;
-    ctx.fillStyle=evenRow?'#c0392b':'#ecf0f1';
-    ctx.fillRect(ROAD_L-6,y,6,stripeH);
-    ctx.fillRect(ROAD_R,y,6,stripeH);
+  // ── Orange bollard posts — both road edges, scrolling with dashOff ────
+  // Spaced every 72px vertically. Each post is a small 3D cylinder:
+  // dark body rectangle + bright orange top cap + amber glow on ground.
+  // Replaces flat red/white kerb stripes — much more cinematic.
+  const bollardSpacing = 72;
+  const bollardOff = dashOff % bollardSpacing;
+  const boltW = 7, boltH = 14; // post dimensions
+  const leftX  = ROAD_L - 3;   // centre of left bollard column
+  const rightX = ROAD_R + 3;   // centre of right bollard column
+  for(let y = -bollardSpacing + bollardOff; y < H + bollardSpacing; y += bollardSpacing){
+    [leftX, rightX].forEach(bx => {
+      // Ground amber glow pool beneath post (cheap radial, low alpha)
+      if(PERF.tier !== 'low'){
+        ctx.save();
+        ctx.globalAlpha = 0.22;
+        const gg = ctx.createRadialGradient(bx, y + boltH*0.5, 0, bx, y + boltH*0.5, 14);
+        gg.addColorStop(0, 'rgba(251,146,60,0.9)');
+        gg.addColorStop(1, 'transparent');
+        ctx.fillStyle = gg;
+        ctx.beginPath(); ctx.ellipse(bx, y + boltH*0.5, 14, 6, 0, 0, Math.PI*2); ctx.fill();
+        ctx.restore();
+      }
+      // Post body — dark grey cylinder face
+      ctx.save();
+      ctx.fillStyle = '#1e2030';
+      rr(bx - boltW/2, y - boltH*0.5, boltW, boltH, 2);
+      ctx.fill();
+      // Orange top cap (bright)
+      if(PERF.shadows){ ctx.shadowColor='rgba(251,146,60,0.9)'; ctx.shadowBlur=10; }
+      ctx.fillStyle = '#f97316';
+      rr(bx - boltW/2, y - boltH*0.5, boltW, 5, 2);
+      ctx.fill();
+      // Bright highlight line on top cap
+      ctx.fillStyle = 'rgba(255,220,150,0.8)';
+      ctx.fillRect(bx - boltW/2 + 1, y - boltH*0.5 + 1, boltW - 2, 1.5);
+      if(PERF.shadows) ctx.shadowBlur=0;
+      ctx.restore();
+    });
   }
 
-  // ── Edge lines — amber glow (shadowBlur only on PERF.shadows) ────────
+  // ── Edge lines — thin dark line at road boundary (behind bollards) ────
   ctx.save();
-  if(PERF.shadows){ ctx.shadowColor='rgba(245,158,11,0.5)'; ctx.shadowBlur=8; }
-  ctx.strokeStyle='#f59e0b'; ctx.lineWidth=2.5; ctx.setLineDash([]);
+  ctx.strokeStyle='rgba(80,90,110,0.6)'; ctx.lineWidth=1.5; ctx.setLineDash([]);
   ctx.beginPath(); ctx.moveTo(ROAD_L,0); ctx.lineTo(ROAD_L,H); ctx.stroke();
   ctx.beginPath(); ctx.moveTo(ROAD_R,0); ctx.lineTo(ROAD_R,H); ctx.stroke();
   ctx.restore();
