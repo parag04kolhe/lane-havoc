@@ -604,12 +604,8 @@ loadMission();
     }catch(e){}
   }
 
-  function doAutoResume(){
+  function resumeAudioAndMusic(){
     try{
-      try{ if(typeof suppressMenuMusic!=='undefined') suppressMenuMusic=false; }catch(e){}
-      if(typeof AC!=='undefined' && AC && AC.state==='suspended'){
-        try{ AC.resume(); }catch(e){}
-      }
       const now=(AC&&AC.currentTime)||0;
       try{ if(typeof masterGain!=='undefined' && masterGain && masterGain.gain) masterGain.gain.setTargetAtTime(bgMuted?0:1, now, 0.08); }catch(e){}
       if(typeof gst!=='undefined'){
@@ -619,6 +615,19 @@ loadMission();
           if(typeof updateMusicForTheme==='function') updateMusicForTheme();
         }
       }
+    }catch(e){}
+  }
+
+  function doAutoResume(){
+    try{
+      try{ if(typeof suppressMenuMusic!=='undefined') suppressMenuMusic=false; }catch(e){}
+      if(typeof AC!=='undefined' && AC && AC.state==='suspended'){
+        try{
+          AC.resume().then(resumeAudioAndMusic).catch(resumeAudioAndMusic);
+          return;
+        }catch(e){}
+      }
+      resumeAudioAndMusic();
     }catch(e){}
   }
 
