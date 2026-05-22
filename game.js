@@ -1032,6 +1032,7 @@ document.addEventListener('keydown',e=>{
     if(e.key===' '||e.key==='p'||e.key==='P'){
       gamePaused=false;
       const pb=document.getElementById('pauseBtn');if(pb)pb.textContent='⏸';
+      try{ suppressMenuMusic=false; initAC(); }catch(e){}
       if(masterGain) masterGain.gain.setTargetAtTime(bgMuted?0:1, AC.currentTime, 0.08);
     }
     return;
@@ -1733,6 +1734,7 @@ if(gst===ST.GAMEOVER && isTap){
         masterGain.gain.setTargetAtTime(0, AC.currentTime, 0.05);
       } else {
         masterGain.gain.setTargetAtTime(bgMuted?0:1, AC.currentTime, 0.08);
+        try{ suppressMenuMusic=false; }catch(e){}
       }
     }
   }

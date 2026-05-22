@@ -584,18 +584,22 @@ loadMission();
 (function(){
   function doAutoPause(){
     try{
+      // Always stop/quiet audio when page is backgrounded (menu or gameplay)
+      if(typeof AC!=='undefined' && AC && AC.state==='running'){
+        try{ AC.suspend(); }catch(e){}
+      }
+      try{ if(typeof stopMenuMusic==='function') stopMenuMusic(); }catch(e){}
+      try{ if(typeof stopBgMusic==='function') stopBgMusic(); }catch(e){}
+      try{ if(typeof masterGain!=='undefined' && masterGain && masterGain.gain) masterGain.gain.setTargetAtTime(0, (AC&&AC.currentTime)||0, 0.05); }catch(e){}
+      try{ if(typeof bgBus!=='undefined' && bgBus && bgBus.gain) bgBus.gain.setTargetAtTime(0, (AC&&AC.currentTime)||0, 0.05); }catch(e){}
+      try{ if(typeof engineBus!=='undefined' && engineBus && engineBus.gain) engineBus.gain.setTargetAtTime(0, (AC&&AC.currentTime)||0, 0.05); }catch(e){}
+      try{ if(typeof sfxBus!=='undefined' && sfxBus && sfxBus.gain) sfxBus.gain.setTargetAtTime(0, (AC&&AC.currentTime)||0, 0.05); }catch(e){}
+      try{ if(typeof weatherBus!=='undefined' && weatherBus && weatherBus.gain) weatherBus.gain.setTargetAtTime(0, (AC&&AC.currentTime)||0, 0.05); }catch(e){}
+      // Prevent menu music from auto-starting while suppressed
+      try{ if(typeof suppressMenuMusic!=='undefined') suppressMenuMusic=true; }catch(e){}
+      // If we were in gameplay, also set the gamePaused flag so gameplay stops
       if(typeof gst!=='undefined' && (gst===ST.PLAYING || gst===ST.RESPAWNING)){
-        gamePaused=true;
-        const pb=document.getElementById('pauseBtn'); if(pb) pb.textContent='▶';
-        // Try to suspend the AudioContext to stop all WebAudio playback (best-effort)
-        try{ if(typeof AC!=='undefined' && AC && AC.state==='running') AC.suspend(); }catch(e){}
-        // Also mute available gain buses as a fallback
-        try{ if(typeof masterGain!=='undefined' && masterGain && masterGain.gain) masterGain.gain.setTargetAtTime(0, (AC&&AC.currentTime)||0, 0.05); }catch(e){}
-        try{ if(typeof bgBus!=='undefined' && bgBus && bgBus.gain) bgBus.gain.setTargetAtTime(0, (AC&&AC.currentTime)||0, 0.05); }catch(e){}
-        try{ if(typeof engineBus!=='undefined' && engineBus && engineBus.gain) engineBus.gain.setTargetAtTime(0, (AC&&AC.currentTime)||0, 0.05); }catch(e){}
-        try{ if(typeof sfxBus!=='undefined' && sfxBus && sfxBus.gain) sfxBus.gain.setTargetAtTime(0, (AC&&AC.currentTime)||0, 0.05); }catch(e){}
-        try{ if(typeof weatherBus!=='undefined' && weatherBus && weatherBus.gain) weatherBus.gain.setTargetAtTime(0, (AC&&AC.currentTime)||0, 0.05); }catch(e){}
-        // Keep almost-dead bus quiet by design (it's routed direct) — nothing to do
+        gamePaused=true; const pb=document.getElementById('pauseBtn'); if(pb) pb.textContent='▶';
       }
     }catch(e){}
   }
