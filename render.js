@@ -319,25 +319,23 @@ function _drawHeadlightBeam(cx, cy){
 }
 function _drawTaillightGlow(cx, cy){
   if(PERF.tier==='low') return;
-  // ── Road glow pool — wide soft radial behind car ──
+  // ── Road glow pool — subtle soft radial behind car ──
   ctx.save();
-  const rg = ctx.createRadialGradient(cx, cy-46, 2, cx, cy-46, 30);
-  rg.addColorStop(0,   'rgba(255,20,0,0.45)');
-  rg.addColorStop(0.5, 'rgba(220,10,0,0.18)');
+  const rg = ctx.createRadialGradient(cx, cy-46, 1, cx, cy-46, 26);
+  rg.addColorStop(0,   'rgba(255,20,0,0.22)');
+  rg.addColorStop(0.5, 'rgba(200,10,0,0.08)');
   rg.addColorStop(1,   'transparent');
   ctx.fillStyle = rg;
-  ctx.beginPath(); ctx.ellipse(cx, cy-46, 30, 12, 0, 0, Math.PI*2); ctx.fill();
+  ctx.beginPath(); ctx.ellipse(cx, cy-46, 26, 10, 0, 0, Math.PI*2); ctx.fill();
   ctx.restore();
-  // ── Two taillight units drawn on rear of car ──
-  // Left unit
+  // ── Two taillight units — only for canvas-drawn fallback cars ──
+  // (image-based cars already have taillights baked in the PNG)
   ctx.save();
-  if(PERF.shadows){ ctx.shadowColor='rgba(255,30,0,0.9)'; ctx.shadowBlur=8; }
-  ctx.fillStyle='#ff1a00';
+  if(PERF.shadows){ ctx.shadowColor='rgba(255,30,0,0.6)'; ctx.shadowBlur=6; }
+  ctx.fillStyle='rgba(220,20,0,0.75)';
   rr(cx-18, cy-42, 10, 4, 1); ctx.fill();
-  // Right unit
   rr(cx+8,  cy-42, 10, 4, 1); ctx.fill();
-  // Bright inner highlight
-  ctx.fillStyle='rgba(255,160,120,0.85)';
+  ctx.fillStyle='rgba(255,160,120,0.55)';
   ctx.fillRect(cx-17, cy-42, 8, 2);
   ctx.fillRect(cx+9,  cy-42, 8, 2);
   if(PERF.shadows) ctx.shadowBlur=0;
@@ -2724,20 +2722,8 @@ function draw(){
     ctx.fillStyle=_esh; ctx.beginPath(); ctx.ellipse(eLaneX,e.y+4,28,11,0,0,Math.PI*2); ctx.fill(); ctx.restore();
     if(_imgEnemyOk){
       // Draw image-based enemy car (pre-rotated: front at bottom, facing player)
+      // Image already has taillights baked in — no canvas units needed on top
       _drawCarImg(eLaneX, e.y, window._CAR_ENEMY, 44, 76);
-      // ── Taillight units ON car rear (image car, rear = top of screen) ──
-      if(PERF.tier!=='low'){
-        ctx.save();
-        if(PERF.shadows){ ctx.shadowColor='rgba(255,30,0,0.9)'; ctx.shadowBlur=7; }
-        ctx.fillStyle='#ff1a00';
-        rr(eLaneX-16, e.y-33, 8, 3, 1); ctx.fill();
-        rr(eLaneX+8,  e.y-33, 8, 3, 1); ctx.fill();
-        ctx.fillStyle='rgba(255,180,140,0.80)';
-        ctx.fillRect(eLaneX-15, e.y-33, 6, 1.5);
-        ctx.fillRect(eLaneX+9,  e.y-33, 6, 1.5);
-        if(PERF.shadows) ctx.shadowBlur=0;
-        ctx.restore();
-      }
     } else {
       // Fallback: canvas-drawn car with flip
       ctx.save(); ctx.translate(eLaneX,e.y); ctx.scale(1,-1); ctx.translate(-eLaneX,-e.y);
