@@ -68,7 +68,7 @@ function initVars(){
   respawnFadeTimer=0;newBestCelebTimer=0;confettiParticles=[];
   runNearMisses=0;runCattleDodged=0;runMaxCombo=0;runStagesSurvived=0;
   runNitroInRain=false;runNitroRainDone=false;
-  runNitroUsed=0;
+  runNitroUsed=0;runBossKilled=false;
   reviveTimer=0;reviveUsed=false;
   postShieldGrace=0;
   savedFlash=0;
@@ -506,32 +506,22 @@ function spawnTruck(dt){
 
 /* ══════════════════════════════════════════════
    WEEKLY MISSION CHAIN
-   5 missions per week, reset every Monday.
-   Each completed mission advances to the next.
-   Completing all 5 shows "WEEK COMPLETE" and
-   waits for Monday to reset.
+   5 missions per week, resets every Monday.
+   Chain advances on completion — all 5 done = WEEK COMPLETE.
 ══════════════════════════════════════════════ */
 const WEEKLY_MISSIONS=[
   {id:'wm_coins50',  text:'Collect 50 coins in one run',  reward:25, check:()=>sessionCoins>=50},
-  {id:'wm_combo3x',  text:'Reach a ×3 combo streak',      reward:30, check:()=>runMaxCombo>=6},
+  {id:'wm_combo3x',  text:'Reach a \u00d73 combo streak', reward:30, check:()=>runMaxCombo>=6},
   {id:'wm_stage5',   text:'Survive to stage 5',           reward:40, check:()=>stageNum>=5},
   {id:'wm_misses15', text:'Get 15 near-misses in one run',reward:35, check:()=>runNearMisses>=15},
   {id:'wm_nitro4',   text:'Use nitro 4 times in one run', reward:50, check:()=>runNitroUsed>=4},
 ];
+let activeMission=null,missionCompleteFlash=0,missionCompleteText='';
+let missionProgress=0;
 
-// Weekly chain state — persisted in localStorage
-let weeklyMissionIdx  = loadLS('rr_weekly_mission_idx',  0);
-let weeklyResetDate   = loadLS('rr_weekly_reset_date',   '');
-let weeklyAllDone     = loadLS('rr_weekly_all_done',     false);
-
-// activeMission, missionCompleteFlash, missionCompleteText — keep original names for render.js compat
-let activeMission=null, missionCompleteFlash=0, missionCompleteText='';
-let missionProgress=0; // kept for backwards compat; not actively used
-
-/* Returns the ISO date string of the most recent Monday */
 function _getMondayDateString(){
   const d=new Date();
-  const day=d.getDay(); // 0=Sun…6=Sat
+  const day=d.getDay();
   const diff=(day===0)?6:(day-1);
   d.setDate(d.getDate()-diff);
   d.setHours(0,0,0,0);
@@ -541,38 +531,23 @@ function _getMondayDateString(){
 function loadWeeklyMission(){
   const monday=_getMondayDateString();
   if(weeklyResetDate!==monday){
-    // New week — reset chain
-    weeklyMissionIdx=0;
-    weeklyResetDate=monday;
-    weeklyAllDone=false;
-    saveLS('rr_weekly_mission_idx', 0);
-    saveLS('rr_weekly_reset_date',  monday);
-    saveLS('rr_weekly_all_done',    false);
+    weeklyMissionIdx=0; weeklyResetDate=monday; weeklyAllDone=false;
+    saveLS('rr_weekly_mission_idx',0);
+    saveLS('rr_weekly_reset_date',monday);
+    saveLS('rr_weekly_all_done',false);
   }
-  // Set activeMission to current chain position
-  if(weeklyAllDone||weeklyMissionIdx>=WEEKLY_MISSIONS.length){
-    activeMission=null;
-  } else {
-    activeMission=WEEKLY_MISSIONS[weeklyMissionIdx];
-  }
+  activeMission=(weeklyAllDone||weeklyMissionIdx>=WEEKLY_MISSIONS.length)?null:WEEKLY_MISSIONS[weeklyMissionIdx];
 }
 
 function checkMission(){
   if(!activeMission)return;
   if(activeMission.check()){
     const _reward=activeMission.reward;
-    coinBank+=_reward;
-    saveLS('rr_coins2',coinBank);
-    cvalEl.textContent=coinBank;
-
-    weeklyMissionIdx++;
-    saveLS('rr_weekly_mission_idx', weeklyMissionIdx);
-
+    coinBank+=_reward;saveLS('rr_coins2',coinBank);cvalEl.textContent=coinBank;
+    weeklyMissionIdx++;saveLS('rr_weekly_mission_idx',weeklyMissionIdx);
     if(weeklyMissionIdx>=WEEKLY_MISSIONS.length){
-      // All 5 done this week
-      weeklyAllDone=true;
-      saveLS('rr_weekly_all_done', true);
-      missionCompleteText='WEEK COMPLETE! +'+_reward+' COINS 🎉';
+      weeklyAllDone=true;saveLS('rr_weekly_all_done',true);
+      missionCompleteText='WEEK COMPLETE! +'+_reward+' COINS \uD83C\uDF89';
       activeMission=null;
     } else {
       missionCompleteText='MISSION DONE! +'+_reward+' COINS';
@@ -581,6 +556,34 @@ function checkMission(){
     missionCompleteFlash=240;
     snd('missionComplete');haptic([30,20,60,20,30]);
   }
+}
+
+/* ── Achievement checker ─────────────────────────────────────────────────── */
+function checkAchievements(){
+  if(!ACHIEVEMENTS||!unlockedAchievements)return;
+  ACHIEVEMENTS.forEach(a=>{
+    if(unlockedAchievements.includes(a.id))return;
+    let met=false;
+    switch(a.id){
+      case 'first_nm':   met=runNearMisses>=1;      break;
+      case 'combo_4x':   met=runMaxCombo>=10;        break;
+      case 'stage_5':    met=stageNum>=5;            break;
+      case 'stage_10':   met=stageNum>=10;           break;
+      case 'nitro3':     met=runNitroUsed>=3;        break;
+      case 'coins50run': met=sessionCoins>=50;       break;
+      case 'boss_gone':  met=runBossKilled;          break;
+      case 'runs_10':    met=statTotalRuns>=10;      break;
+      case 'runs_50':    met=statTotalRuns>=50;      break;
+      case 'nm_100':     met=statTotalMisses>=100;   break;
+    }
+    if(met){
+      unlockedAchievements.push(a.id);
+      saveLS('rr_achievements',unlockedAchievements);
+      coinBank+=a.reward;saveLS('rr_coins2',coinBank);cvalEl.textContent=coinBank;
+      _nmPush('\uD83C\uDFC6 '+a.text+'! +'+a.reward,W/2,H/2-80,150,'#fbbf24',true);
+      snd('missionComplete');haptic([30,20,60,20,30]);
+    }
+  });
 }
 
 /* ══════════════════════════════════════════════
@@ -653,6 +656,7 @@ function triggerNearMiss(ex,ey){
   } else snd('nearmiss');
   _updateComboBadge();
   checkMission();
+  checkAchievements();
 }
 
 // Called directly from doLeft()/doRight() at the exact moment of lane switch.
@@ -1081,9 +1085,10 @@ function _fireNitro(){
   exhaustTimer = _final;
   nitroReserve = false;
   nitroExpiryTimer = 0;
-  runNitroUsed++; // track for weekly mission 5
+  runNitroUsed++;
   snd('nitroOn');
   if(weatherType==='rain'&&!runNitroRainDone){runNitroInRain=true;runNitroRainDone=true;checkMission();}
+  checkAchievements();
   _updateNitroBtn();
 }
 function _updateNitroBtn(){
@@ -1522,6 +1527,7 @@ function update(dt){
     }
     lastStages=stages;
     checkMission();
+    checkAchievements();
   }
 
   // Stage-2 nitro auto-trigger removed — nitro tutorial now flows directly from Phase 9
@@ -1579,10 +1585,12 @@ function update(dt){
     if(bossCar.y>H+120||bossTimer<=0){
       // Boss defeated / escaped — reward
       bossActive=false;bossCar=null;
+      runBossKilled=true;
       const bossReward=80;
       score+=bossReward;coinBank+=3;saveLS('rr_coins2',coinBank);cvalEl.textContent=coinBank;
       _nmPush('BOSS ESCAPED! +'+bossReward,W/2,H/2-30,120,'#fbbf24',true);
       snd('bossDefeated');haptic([40,20,60,20,40]);
+      checkAchievements();
     } else if(gst===ST.PLAYING){
       // Boss collision — only check if boss is still alive
       const px=player.visualX,py=player.y-player.jumpOff;

@@ -3967,7 +3967,6 @@ function _drawSplashStats(){
    DRAW — STATS SCREEN  (full-page state ST.STATS)
 ══════════════════════════════════════════════ */
 function drawStatsScreen(){
-  // Same scrolling bg as intro / howto — reuse cached gradients
   if(!GC.introSky){const s=ctx.createLinearGradient(0,0,0,H*0.45);s.addColorStop(0,'#04060a');s.addColorStop(1,'#0b0e1e');GC.introSky=s;}
   if(!GC.introRoad){const r=ctx.createLinearGradient(0,H*0.42,0,H);r.addColorStop(0,'#14182a');r.addColorStop(1,'#1e222e');GC.introRoad=r;}
   ctx.fillStyle=GC.introSky;ctx.fillRect(0,0,W,H);
@@ -3981,7 +3980,6 @@ function drawStatsScreen(){
   ctx.setLineDash([]);ctx.restore();
   ctx.fillStyle='rgba(4,6,14,0.72)';ctx.fillRect(0,0,W,H);
 
-  // Card
   const CW=352,CX=(W-CW)/2,CY=10,cardH=H-20;
   ctx.save();
   ctx.fillStyle='rgba(6,9,22,0.95)';rr(CX,CY,CW,cardH,14);ctx.fill();
@@ -3989,73 +3987,109 @@ function drawStatsScreen(){
   ctx.strokeStyle='rgba(74,222,128,0.5)';ctx.lineWidth=1.5;rr(CX,CY,CW,cardH,14);ctx.stroke();
   ctx.restore();
 
-  // Logo at top of card
+  // Logo
   ctx.save();
   if(window._LANE_HAVOC_LOGO&&window._LANE_HAVOC_LOGO.complete&&window._LANE_HAVOC_LOGO.naturalWidth>0){
     ctx.drawImage(window._LANE_HAVOC_LOGO,W/2-100,CY+8,200,80);
   }
   ctx.restore();
 
-  // Title — below logo, no overlap
+  // ── YOUR STATS title ──
   ctx.save();ctx.textAlign='center';ctx.textBaseline='middle';
   ctx.font="900 16px 'Orbitron',impact,sans-serif";
   ctx.shadowColor='#4ade80';ctx.shadowBlur=14;ctx.fillStyle='#4ade80';
-  ctx.fillText('YOUR STATS',W/2,CY+100);
-  ctx.shadowBlur=0;ctx.restore();
+  ctx.fillText('YOUR STATS',W/2,CY+100);ctx.shadowBlur=0;ctx.restore();
 
-  // Divider
   ctx.save();ctx.strokeStyle='rgba(74,222,128,0.25)';ctx.lineWidth=1;
-  ctx.beginPath();ctx.moveTo(CX+16,CY+114);ctx.lineTo(CX+CW-16,CY+114);ctx.stroke();
-  ctx.restore();
+  ctx.beginPath();ctx.moveTo(CX+16,CY+114);ctx.lineTo(CX+CW-16,CY+114);ctx.stroke();ctx.restore();
 
-  // Stats rows
+  // ── Stats rows (6 × 34px) ──
   const srows=[
-    ['🏆 Best Score',    bestScore,          '#fbbf24'],
-    ['📏 Best Distance', bestDistance.toFixed(2)+'km',   '#06b6d4'],
-    ['🎮 Total Runs',    statTotalRuns,      '#93c5fd'],
-    ['🪙 Total Coins',   coinBank,           '#fbbf24'],
-    ['💨 Near-Misses',   statTotalMisses,    '#f97316'],
-    ['⚡ Best Streak',    statBestCombo+'×',  '#ef4444'],
+    ['\uD83C\uDFC6 Best Score',   bestScore,                '#fbbf24'],
+    ['\uD83D\uDCCF Best Distance',bestDistance.toFixed(2)+'km','#06b6d4'],
+    ['\uD83C\uDFAE Total Runs',   statTotalRuns,            '#93c5fd'],
+    ['\uD83EDE99 Total Coins',    coinBank,                 '#fbbf24'],
+    ['\uD83D\uDCA8 Near-Misses',  statTotalMisses,          '#f97316'],
+    ['\u26A1 Best Streak',        statBestCombo+'\u00d7',   '#ef4444'],
   ];
-  const rowH=50, startY=CY+122;
+  const sRowH=34, sStartY=CY+122;
   srows.forEach(([label,val,col],i)=>{
-    const ry=startY+i*rowH;
+    const ry=sStartY+i*sRowH;
     ctx.save();
-    // Alternating row bg
-    if(i%2===0){ctx.globalAlpha=0.05;ctx.fillStyle='#fff';rr(CX+12,ry-4,CW-24,rowH-4,6);ctx.fill();}
+    if(i%2===0){ctx.globalAlpha=0.05;ctx.fillStyle='#fff';rr(CX+12,ry-4,CW-24,sRowH-4,6);ctx.fill();}
     ctx.globalAlpha=1;
-    // Label
     ctx.font="bold 9px 'Orbitron',sans-serif";ctx.fillStyle='#94a3b8';
-    ctx.textAlign='left';ctx.textBaseline='top';
-    ctx.fillText(label,CX+28,ry+4);
-    // Value — large, coloured, right-aligned
-    ctx.font="900 22px 'Orbitron',impact,sans-serif";ctx.fillStyle=col;
-    ctx.shadowColor=col;ctx.shadowBlur=10;
-    ctx.textAlign='right';ctx.textBaseline='middle';
-    ctx.fillText(val,CX+CW-28,ry+rowH/2);
-    ctx.shadowBlur=0;
+    ctx.textAlign='left';ctx.textBaseline='top';ctx.fillText(label,CX+28,ry+4);
+    ctx.font="900 18px 'Orbitron',impact,sans-serif";ctx.fillStyle=col;
+    ctx.shadowColor=col;ctx.shadowBlur=8;
+    ctx.textAlign='right';ctx.textBaseline='middle';ctx.fillText(val,CX+CW-28,ry+sRowH/2);
+    ctx.shadowBlur=0;ctx.restore();
+  });
+
+  // Stats section bottom: sStartY + 6*sRowH = CY+122+204 = CY+326
+  const _statsBottom=sStartY+srows.length*sRowH; // CY+326
+
+  // ── Divider ──
+  ctx.save();ctx.strokeStyle='rgba(74,222,128,0.18)';ctx.lineWidth=1;
+  ctx.beginPath();ctx.moveTo(CX+16,_statsBottom+6);ctx.lineTo(CX+CW-16,_statsBottom+6);ctx.stroke();ctx.restore();
+
+  // ── ACHIEVEMENTS title (same style as YOUR STATS) ──
+  const _achY=_statsBottom+22;
+  ctx.save();ctx.textAlign='center';ctx.textBaseline='middle';
+  ctx.font="900 16px 'Orbitron',impact,sans-serif";
+  ctx.shadowColor='#4ade80';ctx.shadowBlur=14;ctx.fillStyle='#4ade80';
+  ctx.fillText('ACHIEVEMENTS',W/2,_achY);ctx.shadowBlur=0;ctx.restore();
+
+  ctx.save();ctx.strokeStyle='rgba(74,222,128,0.20)';ctx.lineWidth=1;
+  ctx.beginPath();ctx.moveTo(CX+16,_achY+14);ctx.lineTo(CX+CW-16,_achY+14);ctx.stroke();ctx.restore();
+
+  // ── Achievement rows (10 × 20px) ──
+  const _achStartY=_achY+20;
+  const _rowH=20;
+  const _unlocked=typeof unlockedAchievements!=='undefined'?unlockedAchievements:[];
+  ACHIEVEMENTS.forEach((a,i)=>{
+    const ry=_achStartY+i*_rowH;
+    const done=_unlocked.includes(a.id);
+    ctx.save();
+    // Row bg (alternating)
+    if(i%2===0){ctx.globalAlpha=0.04;ctx.fillStyle='#fff';rr(CX+12,ry,CW-24,_rowH,4);ctx.fill();}
+    ctx.globalAlpha=done?1:0.42;
+    // Tick or lock icon
+    ctx.font="11px -apple-system,'Segoe UI Emoji','Apple Color Emoji',sans-serif";
+    ctx.textAlign='center';ctx.textBaseline='middle';
+    ctx.fillStyle=done?'#4ade80':'#475569';
+    ctx.fillText(done?'\u2713':'\uD83D\uDD12',CX+22,ry+_rowH/2);
+    // Achievement name
+    ctx.font=(done?'bold':'500')+" 9px 'Orbitron',sans-serif";
+    ctx.fillStyle=done?'#e2e8f0':'#64748b';
+    ctx.textAlign='left';ctx.textBaseline='middle';
+    ctx.fillText(a.text,CX+36,ry+_rowH/2-1);
+    // Reward on right side
+    if(done){
+      ctx.font="600 8px 'Rajdhani',sans-serif";ctx.fillStyle='#fbbf24';
+      ctx.textAlign='right';ctx.fillText('+'+a.reward,CX+CW-14,ry+_rowH/2-1);
+    } else {
+      ctx.font="500 7.5px 'Rajdhani',sans-serif";ctx.fillStyle='#334155';
+      ctx.textAlign='right';ctx.fillText(a.desc,CX+CW-14,ry+_rowH/2-1);
+    }
     ctx.restore();
   });
 
-  // Divider above footer
+  // ── Footer ──
   const footY=CY+cardH-44;
-  ctx.save();ctx.strokeStyle='rgba(74,222,128,0.15)';ctx.lineWidth=1;
-  ctx.beginPath();ctx.moveTo(CX+16,footY);ctx.lineTo(CX+CW-16,footY);ctx.stroke();
-  ctx.restore();
+  ctx.save();ctx.strokeStyle='rgba(74,222,128,0.12)';ctx.lineWidth=1;
+  ctx.beginPath();ctx.moveTo(CX+16,footY);ctx.lineTo(CX+CW-16,footY);ctx.stroke();ctx.restore();
 
-  // Back button
   const bbW=130,bbH=28,bbX=W/2-bbW/2,bbY=footY+8;
   ctx.save();
   ctx.fillStyle='rgba(20,40,30,0.90)';rr(bbX,bbY,bbW,bbH,8);ctx.fill();
   ctx.strokeStyle='rgba(74,222,128,0.7)';ctx.lineWidth=1.3;rr(bbX,bbY,bbW,bbH,8);ctx.stroke();
   ctx.textAlign='center';ctx.textBaseline='middle';
   ctx.font="bold 9px 'Orbitron',sans-serif";ctx.fillStyle='#4ade80';
-  ctx.fillText('← BACK',W/2,bbY+bbH/2);
+  ctx.fillText('\u2190 BACK',W/2,bbY+bbH/2);
   ctx.restore();
 
-  // Hint
-  ctx.save();
-  ctx.textAlign='center';ctx.textBaseline='bottom';
+  ctx.save();ctx.textAlign='center';ctx.textBaseline='bottom';
   ctx.font="600 8px 'Rajdhani',sans-serif";ctx.fillStyle='rgba(100,116,139,0.65)';
   ctx.fillText('tap anywhere to go back',W/2,CY+cardH-4);
   ctx.restore();
@@ -4691,39 +4725,38 @@ function drawSplash(){
       ctx.restore();
     }
 
-    // ── Daily Streak Badge — top-left corner, compact pill ──
-    if(streakCount>0&&menuFadeIn>0.2){
+    // ── Daily Streak Badge — top-left corner ──
+    if(typeof streakCount!=='undefined'&&streakCount>0&&menuFadeIn>0.2){
       const bdgX=10,bdgY=8,bdgW=82,bdgH=28;
-      ctx.save();
-      ctx.globalAlpha=menuFadeIn*0.92;
-      // Dark pill background
-      ctx.fillStyle='rgba(8,6,2,0.85)';
-      rr(bdgX,bdgY,bdgW,bdgH,8);ctx.fill();
-      ctx.strokeStyle='rgba(251,191,36,0.50)';ctx.lineWidth=1;
-      rr(bdgX,bdgY,bdgW,bdgH,8);ctx.stroke();
-      // Flame + DAY N (top line)
+      ctx.save();ctx.globalAlpha=menuFadeIn*0.92;
+      ctx.fillStyle='rgba(8,6,2,0.85)';rr(bdgX,bdgY,bdgW,bdgH,8);ctx.fill();
+      ctx.strokeStyle='rgba(251,191,36,0.50)';ctx.lineWidth=1;rr(bdgX,bdgY,bdgW,bdgH,8);ctx.stroke();
       ctx.textAlign='left';ctx.textBaseline='middle';
-      ctx.font="700 9px 'Rajdhani',sans-serif";
-      ctx.fillStyle='#fbbf24';ctx.shadowColor='#f59e0b';ctx.shadowBlur=5;
-      ctx.fillText('\uD83D\uDD25 DAY '+streakCount,bdgX+6,bdgY+9);
-      ctx.shadowBlur=0;
-      // Next milestone (bottom line)
-      const _nm2=_streakNextMilestone(streakCount);
-      ctx.font="500 7px 'Rajdhani',sans-serif";
-      ctx.fillStyle='rgba(253,211,77,0.60)';
-      if(_nm2){
-        ctx.fillText('day '+_nm2.day+' \u2192 +'+_nm2.coins+'\uD83E\uDE99',bdgX+6,bdgY+20);
-      } else {
-        ctx.fillStyle='#4ade80';ctx.fillText('MAX STREAK!',bdgX+6,bdgY+20);
+      ctx.font="700 9px 'Rajdhani',sans-serif";ctx.fillStyle='#fbbf24';ctx.shadowColor='#f59e0b';ctx.shadowBlur=5;
+      ctx.fillText('\uD83D\uDD25 DAY '+streakCount,bdgX+6,bdgY+9);ctx.shadowBlur=0;
+      const _nm2=typeof _streakNextMilestone==='function'?_streakNextMilestone(streakCount):null;
+      ctx.font="500 7px 'Rajdhani',sans-serif";ctx.fillStyle='rgba(253,211,77,0.60)';
+      if(_nm2){ctx.fillText('day '+_nm2.day+' \u2192 +'+_nm2.coins,bdgX+6,bdgY+20);}
+      else{ctx.fillStyle='#4ade80';ctx.fillText('MAX STREAK!',bdgX+6,bdgY+20);}
+      if(typeof streakRewardAmount!=='undefined'&&streakRewardAmount>0){
+        ctx.font="600 7px 'Rajdhani',sans-serif";ctx.fillStyle='#4ade80';ctx.shadowColor='#22c55e';ctx.shadowBlur=5;
+        ctx.textAlign='right';ctx.fillText('+'+streakRewardAmount,bdgX+bdgW-5,bdgY+9);ctx.shadowBlur=0;
       }
-      // If coins were just awarded this session, show a small toast glow
-      if(streakRewardAmount>0){
-        ctx.font="600 7px 'Rajdhani',sans-serif";
-        ctx.fillStyle='#4ade80';ctx.shadowColor='#22c55e';ctx.shadowBlur=6;
-        ctx.textAlign='right';
-        ctx.fillText('+'+streakRewardAmount,bdgX+bdgW-5,bdgY+9);
-        ctx.shadowBlur=0;
-      }
+      ctx.restore();
+    }
+
+    // ── Level Badge — top-right corner ──
+    if(typeof driverLevel!=='undefined'&&menuFadeIn>0.2){
+      const lbdgW=86,lbdgH=28,lbdgX=W-lbdgW-10,lbdgY=8;
+      const _lvlTitle=typeof getDriverTitle==='function'?getDriverTitle():'ROOKIE';
+      ctx.save();ctx.globalAlpha=menuFadeIn*0.92;
+      ctx.fillStyle='rgba(4,6,18,0.88)';rr(lbdgX,lbdgY,lbdgW,lbdgH,8);ctx.fill();
+      ctx.strokeStyle='rgba(251,191,36,0.40)';ctx.lineWidth=1;rr(lbdgX,lbdgY,lbdgW,lbdgH,8);ctx.stroke();
+      ctx.textAlign='left';ctx.textBaseline='middle';
+      ctx.font="700 9px 'Rajdhani',sans-serif";ctx.fillStyle='#fbbf24';ctx.shadowColor='#f59e0b';ctx.shadowBlur=5;
+      ctx.fillText('\u2B50 LVL '+driverLevel,lbdgX+6,lbdgY+9);ctx.shadowBlur=0;
+      ctx.font="500 7px 'Rajdhani',sans-serif";ctx.fillStyle='rgba(253,211,77,0.65)';
+      ctx.fillText(_lvlTitle,lbdgX+6,lbdgY+20);
       ctx.restore();
     }
 
@@ -5255,45 +5288,36 @@ function drawIntro(){
     ctx.restore();
   }
 
-  // ── Weekly Mission Chain strip — bottom of card ──
+  // ── Weekly Mission Chain strip ──
   {
-    const _stripY=CY+cardH-4;
-    const _stripY2=CY+cardH-18; // second line (dots row)
+    const _stripY=CY+cardH-4, _dotsY=CY+cardH-16;
     ctx.save();ctx.globalAlpha=0.88;ctx.textAlign='center';ctx.textBaseline='bottom';
-
-    if(weeklyAllDone||weeklyMissionIdx>=WEEKLY_MISSIONS.length){
-      // All 5 done this week
+    const _wdone=typeof weeklyAllDone!=='undefined'&&weeklyAllDone;
+    const _midx=typeof weeklyMissionIdx!=='undefined'?weeklyMissionIdx:0;
+    if(_wdone||_midx>=5){
       ctx.font="600 7px 'Rajdhani',sans-serif";ctx.fillStyle='#4ade80';
-      ctx.fillText('\u2606 WEEK COMPLETE! Come back Monday for new missions \u2606',W/2,_stripY);
+      ctx.fillText('\u2606 WEEK COMPLETE! Come back Monday',W/2,_stripY);
     } else if(activeMission){
-      // Show current mission text
       ctx.font="600 7px 'Rajdhani',sans-serif";ctx.fillStyle='#86efac';
-      const _wTxt='\u2666 WEEK '+(weeklyMissionIdx+1)+'/5: '+activeMission.text+' \u2192 +'+activeMission.reward+' ';
+      const _wTxt='\u2666 WEEK '+(_midx+1)+'/5: '+activeMission.text+' \u2192 +'+activeMission.reward+' ';
       const _wTxtR=' coins';
       const _wW=ctx.measureText(_wTxt).width,_wWR=ctx.measureText(_wTxtR).width;
-      const _wTotal=_wW+8+_wWR,_wSX=W/2-_wTotal/2;
+      const _wSX=W/2-(_wW+8+_wWR)/2;
       ctx.textAlign='left';
       ctx.fillText(_wTxt,_wSX,_stripY);
       _coinIco(_wSX+_wW+4,_stripY-5,4);
       ctx.fillText(_wTxtR,_wSX+_wW+10,_stripY);
     }
-
-    // Progress dots — 5 circles, filled=done, pulsing=current, hollow=future
-    const _dotR=4,_dotGap=14,_totalDotW=5*_dotGap;
-    const _dotStartX=W/2-_totalDotW/2+_dotGap/2;
+    // Progress dots
+    const _dotR=4,_dotGap=14,_dotSX=W/2-5*_dotGap/2+_dotGap/2;
     for(let _di=0;_di<5;_di++){
-      const _dx=_dotStartX+_di*_dotGap,_dy=_stripY2-2;
-      const _isDone=_di<weeklyMissionIdx;
-      const _isCurrent=_di===weeklyMissionIdx&&!weeklyAllDone;
-      const _pulse=_isCurrent?(0.7+fastSin(frameCount*0.12)*0.3):1;
-      if(_isDone){
-        ctx.fillStyle='#fbbf24';ctx.shadowColor='#f59e0b';ctx.shadowBlur=5;
-      } else if(_isCurrent){
-        ctx.globalAlpha=0.88*_pulse;ctx.fillStyle='#86efac';ctx.shadowColor='#4ade80';ctx.shadowBlur=6;
-      } else {
-        ctx.globalAlpha=0.35;ctx.fillStyle='#475569';ctx.shadowBlur=0;
-      }
-      ctx.beginPath();ctx.arc(_dx,_dy,_isDone||_isCurrent?_dotR:_dotR-1,0,Math.PI*2);ctx.fill();
+      const _dx=_dotSX+_di*_dotGap;
+      const _isDone=_di<_midx,_isCur=_di===_midx&&!_wdone;
+      const _pulse=_isCur?(0.7+fastSin(frameCount*0.12)*0.3):1;
+      if(_isDone){ctx.fillStyle='#fbbf24';ctx.shadowColor='#f59e0b';ctx.shadowBlur=5;}
+      else if(_isCur){ctx.globalAlpha=0.88*_pulse;ctx.fillStyle='#86efac';ctx.shadowColor='#4ade80';ctx.shadowBlur=6;}
+      else{ctx.globalAlpha=0.35;ctx.fillStyle='#475569';ctx.shadowBlur=0;}
+      ctx.beginPath();ctx.arc(_dx,_dotsY,_isDone||_isCur?_dotR:_dotR-1,0,Math.PI*2);ctx.fill();
       ctx.shadowBlur=0;ctx.globalAlpha=0.88;
     }
     ctx.restore();
@@ -5570,13 +5594,14 @@ function drawRevive(){
 function drawGameOver(){
   const _finalScore=Math.floor(score);
   const isBest=_finalScore>=bestScore&&bestScore>0;
-  const PW=308,PH=410,PX=(W-PW)/2,PY=(H-PH)/2-20;
+  // ── Panel: taller to hold XP bar, unlock nudge, mission chain without overlap ──
+  const PW=308,PH=476,PX=(W-PW)/2,PY=(H-PH)/2-20;
   ctx.fillStyle='rgba(0,0,0,0.75)';ctx.fillRect(0,0,W,H);
   const _panelCol=isBest?'#fbbf24':'#ef4444';
   drawGlassPanel(PX,PY,PW,PH,16,_panelCol);
   ctx.textAlign='center';
 
-  // ── Title: RUN SUMMARY ──
+  // ── Title ──
   ctx.font="900 20px 'Orbitron',impact,sans-serif";
   ctx.fillStyle='#f8fafc';ctx.shadowColor='#4ade80';ctx.shadowBlur=16;
   ctx.fillText('RUN SUMMARY',W/2,PY+40);ctx.shadowBlur=0;
@@ -5585,104 +5610,153 @@ function drawGameOver(){
   if(isBest){
     ctx.font="bold 9px 'Orbitron',sans-serif";ctx.fillStyle='#fbbf24';
     ctx.shadowColor='#fbbf24';ctx.shadowBlur=8;
-    ctx.fillText('⭐ NEW RECORD!',W/2,PY+56);ctx.shadowBlur=0;
+    ctx.fillText('\u2B50 NEW RECORD!',W/2,PY+54);ctx.shadowBlur=0;
   }
 
   // Divider below title
   ctx.strokeStyle='rgba(255,255,255,0.08)';ctx.lineWidth=1;
-  ctx.beginPath();ctx.moveTo(PX+16,PY+64);ctx.lineTo(PX+PW-16,PY+64);ctx.stroke();
+  ctx.beginPath();ctx.moveTo(PX+16,PY+63);ctx.lineTo(PX+PW-16,PY+63);ctx.stroke();
 
-  // ── SCORE — first stat, drawn larger than the rest ──
+  // ── Score ──
   const _scoreCol=isBest?'#fbbf24':'#f8fafc';
   ctx.font="600 10px 'Rajdhani',sans-serif";ctx.fillStyle='#94a3b8';
-  ctx.textAlign='right';ctx.fillText('Score',W/2-4,PY+86);
+  ctx.textAlign='right';ctx.fillText('Score',W/2-4,PY+79);
   ctx.font="900 20px 'Orbitron',impact,sans-serif";
   ctx.fillStyle=_scoreCol;ctx.shadowColor=_scoreCol;ctx.shadowBlur=isBest?14:6;
-  ctx.textAlign='left';ctx.fillText(_finalScore,W/2+6,PY+87);ctx.shadowBlur=0;
+  ctx.textAlign='left';ctx.fillText(_finalScore,W/2+6,PY+80);ctx.shadowBlur=0;
 
-  // Thin divider under score
+  // Divider under score
   ctx.strokeStyle='rgba(255,255,255,0.06)';ctx.lineWidth=1;
-  ctx.beginPath();ctx.moveTo(PX+16,PY+96);ctx.lineTo(PX+PW-16,PY+96);ctx.stroke();
+  ctx.beginPath();ctx.moveTo(PX+16,PY+90);ctx.lineTo(PX+PW-16,PY+90);ctx.stroke();
 
-  // ── Remaining run stats grid ──
+  // ── Run stats grid (6 rows × 17 px) ──
   const runDist=parseFloat((distanceTravelled/15120).toFixed(2));
   const stats=[
     ['Near-Misses',   runNearMisses,   '#f97316'],
-    ['Best Streak',   runMaxCombo+'×', '#ef4444'],
+    ['Best Streak',   runMaxCombo+'\u00d7','#ef4444'],
     ['Coins',         '+'+sessionCoins,'#fbbf24'],
     ['Cattle Dodged', runCattleDodged, '#4ade80'],
     ['Distance',      runDist+'km',    '#06b6d4'],
     ['Stage Reached', stageNum,        '#a78bfa'],
   ];
   stats.forEach(([k,v,c],i)=>{
-    const ry=PY+114+i*20;
-    ctx.font="600 10px 'Rajdhani',sans-serif";ctx.fillStyle='#94a3b8';ctx.textAlign='right';ctx.fillText(k,W/2-4,ry);
-    ctx.font="bold 10px 'Orbitron',sans-serif";ctx.fillStyle=c;ctx.textAlign='left';ctx.fillText(v,W/2+6,ry);
+    const ry=PY+106+i*17;
+    ctx.font="600 9.5px 'Rajdhani',sans-serif";ctx.fillStyle='#94a3b8';ctx.textAlign='right';ctx.fillText(k,W/2-4,ry);
+    ctx.font="bold 9.5px 'Orbitron',sans-serif";ctx.fillStyle=c;ctx.textAlign='left';ctx.fillText(v,W/2+6,ry);
   });
 
   // Divider above all-time bests
   ctx.strokeStyle='rgba(255,255,255,0.08)';ctx.lineWidth=1;
-  ctx.beginPath();ctx.moveTo(PX+16,PY+234);ctx.lineTo(PX+PW-16,PY+234);ctx.stroke();
+  ctx.beginPath();ctx.moveTo(PX+16,PY+209);ctx.lineTo(PX+PW-16,PY+209);ctx.stroke();
 
   // ── All-time bests ──
-  ctx.font="600 10px 'Rajdhani',sans-serif";ctx.fillStyle='#94a3b8';ctx.textAlign='right';ctx.fillText('Best Score',W/2-4,PY+252);
-  ctx.font="bold 10px 'Orbitron',sans-serif";ctx.fillStyle=isBest?'#fbbf24':'#f8fafc';ctx.textAlign='left';ctx.fillText(bestScore,W/2+6,PY+252);
-  ctx.font="600 10px 'Rajdhani',sans-serif";ctx.fillStyle='#94a3b8';ctx.textAlign='right';ctx.fillText('Best Distance',W/2-4,PY+269);
-  ctx.font="bold 10px 'Orbitron',sans-serif";ctx.fillStyle='#06b6d4';ctx.textAlign='left';ctx.fillText(bestDistance.toFixed(2)+'km',W/2+6,PY+269);
-  ctx.font="600 10px 'Rajdhani',sans-serif";ctx.fillStyle='#94a3b8';ctx.textAlign='right';ctx.fillText('Coins Bank',W/2-4,PY+286);
-  ctx.textAlign='left';_coinIco(W/2+11,PY+283,5);ctx.font="bold 10px 'Orbitron',sans-serif";ctx.fillStyle='#fbbf24';ctx.fillText(' '+coinBank,W/2+18,PY+286);
+  ctx.font="600 9.5px 'Rajdhani',sans-serif";ctx.fillStyle='#94a3b8';ctx.textAlign='right';
+  ctx.fillText('Best Score',W/2-4,PY+224);
+  ctx.font="bold 9.5px 'Orbitron',sans-serif";ctx.fillStyle=isBest?'#fbbf24':'#f8fafc';ctx.textAlign='left';ctx.fillText(bestScore,W/2+6,PY+224);
 
-  // Weekly mission chain reminder + dots
-  {
-    const _goMY=PY+300;
-    ctx.save();ctx.textAlign='center';
-    if(weeklyAllDone||weeklyMissionIdx>=WEEKLY_MISSIONS.length){
-      ctx.font="600 8px 'Rajdhani',sans-serif";ctx.fillStyle='#4ade80';
-      ctx.fillText('\u2606 WEEK COMPLETE \u2606',W/2,_goMY);
-    } else if(activeMission){
-      ctx.font="600 8px 'Rajdhani',sans-serif";ctx.fillStyle='#64748b';
-      const _goTxt='MISSION '+(weeklyMissionIdx+1)+'/5: '+activeMission.text;
-      // Truncate if too wide
-      const _goMaxW=PW-24;
-      ctx.font="600 8px 'Rajdhani',sans-serif";
-      let _goFinal=_goTxt;
-      while(ctx.measureText(_goFinal).width>_goMaxW&&_goFinal.length>10)_goFinal=_goFinal.slice(0,-1);
-      if(_goFinal!==_goTxt)_goFinal=_goFinal.trim()+'…';
-      ctx.fillText(_goFinal,W/2,_goMY);
-    } else {
-      ctx.font="600 8px 'Rajdhani',sans-serif";ctx.fillStyle='#334155';
-      ctx.fillText('No active mission this week',W/2,_goMY);
-    }
-    // Progress dots
-    const _gdR=3,_gdGap=12,_gdStartX=W/2-5*_gdGap/2+_gdGap/2;
-    const _gdY=_goMY+10;
-    for(let _di=0;_di<5;_di++){
-      const _gx=_gdStartX+_di*_gdGap;
-      const _isDone=_di<weeklyMissionIdx;
-      const _isCur=_di===weeklyMissionIdx&&!weeklyAllDone;
-      ctx.fillStyle=_isDone?'#fbbf24':_isCur?'#86efac':'#1e293b';
-      ctx.shadowColor=_isDone?'#f59e0b':_isCur?'#4ade80':'transparent';
-      ctx.shadowBlur=_isDone||_isCur?4:0;
-      ctx.beginPath();ctx.arc(_gx,_gdY,_isDone||_isCur?_gdR:_gdR-1,0,Math.PI*2);ctx.fill();
-    }
-    ctx.shadowBlur=0;
-    ctx.restore();
-  }
+  ctx.font="600 9.5px 'Rajdhani',sans-serif";ctx.fillStyle='#94a3b8';ctx.textAlign='right';
+  ctx.fillText('Best Distance',W/2-4,PY+240);
+  ctx.font="bold 9.5px 'Orbitron',sans-serif";ctx.fillStyle='#06b6d4';ctx.textAlign='left';ctx.fillText(bestDistance.toFixed(2)+'km',W/2+6,PY+240);
 
-  // ── SHARE button ──
-  const shW=168,shH=30,shX=W/2-shW/2,shY=PY+316;
+  ctx.font="600 9.5px 'Rajdhani',sans-serif";ctx.fillStyle='#94a3b8';ctx.textAlign='right';
+  ctx.fillText('Coins Bank',W/2-4,PY+256);
+  ctx.textAlign='left';_coinIco(W/2+11,PY+253,5);
+  ctx.font="bold 9.5px 'Orbitron',sans-serif";ctx.fillStyle='#fbbf24';ctx.fillText(' '+coinBank,W/2+18,PY+256);
+
+  // ── Thin divider ──
+  ctx.strokeStyle='rgba(255,255,255,0.07)';ctx.lineWidth=1;
+  ctx.beginPath();ctx.moveTo(PX+16,PY+268);ctx.lineTo(PX+PW-16,PY+268);ctx.stroke();
+
+  // ── XP / Level row ──
   ctx.save();
-  ctx.fillStyle='rgba(6,20,50,0.92)';rr(shX,shY,shW,shH,9);ctx.fill();
-  ctx.strokeStyle='#38bdf8';ctx.lineWidth=1.6;
-  ctx.shadowColor='#38bdf8';ctx.shadowBlur=10;
-  rr(shX,shY,shW,shH,9);ctx.stroke();ctx.shadowBlur=0;
-  ctx.font="bold 10px 'Orbitron',sans-serif";ctx.fillStyle='#7dd3fc';
-  ctx.textAlign='center';ctx.textBaseline='middle';
-  ctx.fillText('📤  SHARE MY RUN',W/2,shY+shH/2);
+  const _lvl=typeof driverLevel!=='undefined'?driverLevel:1;
+  const _xp =typeof driverXP!=='undefined'?driverXP:0;
+  const _xpG=typeof _lastXpGained!=='undefined'?_lastXpGained:0;
+  const _xpN=500*_lvl;
+  const _title=typeof getDriverTitle==='function'?getDriverTitle():'ROOKIE';
+  // Level label — left
+  ctx.textAlign='left';ctx.textBaseline='middle';
+  ctx.font="700 8px 'Rajdhani',sans-serif";ctx.fillStyle='#fbbf24';
+  ctx.fillText('\u2B50 LVL '+_lvl+' \u00B7 '+_title,PX+14,PY+279);
+  // XP gained — right
+  if(_xpG>0){
+    ctx.textAlign='right';ctx.fillStyle='#4ade80';ctx.shadowColor='#22c55e';ctx.shadowBlur=5;
+    ctx.font="700 8px 'Rajdhani',sans-serif";
+    ctx.fillText('+'+_xpG+' XP',PX+PW-14,PY+279);ctx.shadowBlur=0;
+  }
+  // XP progress bar
+  const _bX=PX+14,_bY=PY+286,_bW=PW-28,_bH=4;
+  const _xpFill=Math.min(1,_xpN>0?_xp/_xpN:0);
+  ctx.fillStyle='rgba(255,255,255,0.08)';rr(_bX,_bY,_bW,_bH,2);ctx.fill();
+  if(_xpFill>0){
+    ctx.fillStyle='#fbbf24';ctx.shadowColor='#f59e0b';ctx.shadowBlur=5;
+    rr(_bX,_bY,_bW*_xpFill,_bH,2);ctx.fill();ctx.shadowBlur=0;
+  }
   ctx.textBaseline='alphabetic';
   ctx.restore();
 
-  // ── RETRY + MENU buttons ──
+  // ── Next unlock nudge ──
+  ctx.save();ctx.textAlign='center';ctx.textBaseline='alphabetic';
+  ctx.font="600 8px 'Rajdhani',sans-serif";
+  const _allItems=[...SKINS,...TRAILS,...BOOSTS];
+  const _nextItem=_allItems.find(it=>!isOwned(it.id)&&it.price>0);
+  if(_nextItem){
+    const _diff=_nextItem.price-coinBank;
+    if(_diff<=0){
+      ctx.fillStyle='#4ade80';ctx.shadowColor='#22c55e';ctx.shadowBlur=5;
+      ctx.fillText('\u2713 You can unlock '+_nextItem.name+' now!',W/2,PY+304);ctx.shadowBlur=0;
+    } else {
+      ctx.fillStyle='#64748b';
+      ctx.fillText(_diff+' more coins to unlock '+_nextItem.name,W/2,PY+304);
+    }
+  } else {
+    ctx.fillStyle='#4ade80';ctx.fillText('ALL ITEMS UNLOCKED \u2014 TRUE LEGEND',W/2,PY+304);
+  }
+  ctx.restore();
+
+  // ── Weekly mission + progress dots ──
+  ctx.save();ctx.textAlign='center';ctx.textBaseline='alphabetic';
+  const _wdone=typeof weeklyAllDone!=='undefined'&&weeklyAllDone;
+  const _midx =typeof weeklyMissionIdx!=='undefined'?weeklyMissionIdx:0;
+  if(_wdone||_midx>=5){
+    ctx.font="600 8px 'Rajdhani',sans-serif";ctx.fillStyle='#4ade80';
+    ctx.fillText('\u2606 WEEK COMPLETE! See you Monday',W/2,PY+319);
+  } else if(activeMission){
+    ctx.font="600 8px 'Rajdhani',sans-serif";ctx.fillStyle='#64748b';
+    let _mTxt='MISSION '+(_midx+1)+'/5: '+activeMission.text;
+    const _mMaxW=PW-28;
+    while(ctx.measureText(_mTxt).width>_mMaxW&&_mTxt.length>12)_mTxt=_mTxt.slice(0,-1);
+    if(_mTxt!==('MISSION '+(_midx+1)+'/5: '+activeMission.text))_mTxt=_mTxt.trim()+'\u2026';
+    ctx.fillText(_mTxt,W/2,PY+319);
+  }
+  // 5 progress dots
+  const _gdR=3,_gdGap=12,_gdSX=W/2-5*_gdGap/2+_gdGap/2;
+  for(let _di=0;_di<5;_di++){
+    const _gx=_gdSX+_di*_gdGap,_gy=PY+331;
+    const _done=_di<_midx,_cur=_di===_midx&&!_wdone;
+    ctx.fillStyle=_done?'#fbbf24':_cur?'#86efac':'#1e293b';
+    ctx.shadowColor=_done?'#f59e0b':_cur?'#4ade80':'transparent';
+    ctx.shadowBlur=_done||_cur?4:0;
+    ctx.beginPath();ctx.arc(_gx,_gy,_done||_cur?_gdR:_gdR-1,0,Math.PI*2);ctx.fill();
+  }
+  ctx.shadowBlur=0;ctx.restore();
+
+  // Divider above buttons
+  ctx.strokeStyle='rgba(255,255,255,0.07)';ctx.lineWidth=1;
+  ctx.beginPath();ctx.moveTo(PX+16,PY+342);ctx.lineTo(PX+PW-16,PY+342);ctx.stroke();
+
+  // ── SHARE button ──
+  const shW=200,shH=28,shX=W/2-shW/2,shY=PY+352;
+  ctx.save();
+  ctx.fillStyle='rgba(6,20,50,0.92)';rr(shX,shY,shW,shH,9);ctx.fill();
+  ctx.strokeStyle='#38bdf8';ctx.lineWidth=1.6;ctx.shadowColor='#38bdf8';ctx.shadowBlur=10;
+  rr(shX,shY,shW,shH,9);ctx.stroke();ctx.shadowBlur=0;
+  ctx.font="bold 10px 'Orbitron',sans-serif";ctx.fillStyle='#7dd3fc';
+  ctx.textAlign='center';ctx.textBaseline='middle';
+  ctx.fillText('\uD83D\uDCE4  SHARE MY RUN',W/2,shY+shH/2);
+  ctx.textBaseline='alphabetic';ctx.restore();
+
+  // ── RETRY + MENU buttons (PY+PH-54 = PY+422) ──
   const rbW=132,rbH=34,rbX=W/2-rbW-6,rbY=PY+PH-54;
   const mbW=132,mbH=34,mbX=W/2+6,mbY=PY+PH-54;
   if(!GC.goRetryGrad){
@@ -5697,24 +5771,19 @@ function drawGameOver(){
   const retryPulse=0.80+fastSin(frameCount*0.09)*0.20;
   ctx.globalAlpha=retryPulse;
   ctx.fillStyle=GC.goRetryGrad;rr(rbX,rbY,rbW,rbH,9);ctx.fill();
-  ctx.strokeStyle='#ef4444';ctx.lineWidth=1.8;
-  ctx.shadowColor='#ef4444';ctx.shadowBlur=14;
-  rr(rbX,rbY,rbW,rbH,9);ctx.stroke();
-  ctx.shadowBlur=0;
+  ctx.strokeStyle='#ef4444';ctx.lineWidth=1.8;ctx.shadowColor='#ef4444';ctx.shadowBlur=14;
+  rr(rbX,rbY,rbW,rbH,9);ctx.stroke();ctx.shadowBlur=0;
   ctx.font="bold 11px 'Orbitron',sans-serif";ctx.fillStyle='#fca5a5';
   ctx.textAlign='center';ctx.textBaseline='middle';
-  ctx.fillText('↺  RETRY',rbX+rbW/2,rbY+rbH/2);
+  ctx.fillText('\u21BA  RETRY',rbX+rbW/2,rbY+rbH/2);
   ctx.restore();
-  ctx.save();
-  ctx.globalAlpha=0.88;
+  ctx.save();ctx.globalAlpha=0.88;
   ctx.fillStyle=GC.goMenuGrad;rr(mbX,mbY,mbW,mbH,9);ctx.fill();
-  ctx.strokeStyle='#60a5fa';ctx.lineWidth=1.8;
-  ctx.shadowColor='#3b82f6';ctx.shadowBlur=10;
-  rr(mbX,mbY,mbW,mbH,9);ctx.stroke();
-  ctx.shadowBlur=0;
+  ctx.strokeStyle='#60a5fa';ctx.lineWidth=1.8;ctx.shadowColor='#3b82f6';ctx.shadowBlur=10;
+  rr(mbX,mbY,mbW,mbH,9);ctx.stroke();ctx.shadowBlur=0;
   ctx.font="bold 11px 'Orbitron',sans-serif";ctx.fillStyle='#93c5fd';
   ctx.textAlign='center';ctx.textBaseline='middle';
-  ctx.fillText('⌂  MENU',mbX+mbW/2,mbY+mbH/2);
+  ctx.fillText('\u2302  MENU',mbX+mbW/2,mbY+mbH/2);
   ctx.restore();
   ctx.textAlign='left';
   _drawGoBtns();
