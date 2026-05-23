@@ -416,94 +416,104 @@ let statTotalRuns   = loadLS('rr_stat_runs',0);
 let statBestCombo   = loadLS('rr_stat_combo',0);
 let statTotalMisses = loadLS('rr_stat_misses',0);
 let statTotalCoins  = loadLS('rr_stat_coins',0);
-/* ── XP & Driver Level ──────────────────────────────────────────────────────
-   XP gained per run = floor(score × 0.1) + sessionCoins × 2
-   XP to next level  = 500 × currentLevel (level 1→2 needs 500, 2→3 needs 1000…)
-   Titles clamp at index 5 for level 6+
-────────────────────────────────────────────────────────────────────────── */
-let driverXP    = loadLS('rr_xp', 0);
-let driverLevel = loadLS('rr_level', 1);
-let _lastXpGained = 0; // XP gained in the most recent run — shown on game-over
-const LEVEL_TITLES = ['ROOKIE','STREET RACER','SPEED DEMON','GHOST RIDER','APEX HUNTER','LEGEND'];
-function getDriverTitle(){
-  return LEVEL_TITLES[Math.min(driverLevel - 1, LEVEL_TITLES.length - 1)];
+// ── Monday date helper (used by XP weekly reset and mission chain) ──────────
+function _getMondayStr(){
+  const d=new Date();const day=d.getDay();
+  d.setDate(d.getDate()-(day===0?6:day-1));
+  d.setHours(0,0,0,0);return d.toDateString();
 }
+
+/* ── Weekly Season XP ────────────────────────────────────────────────────────
+   XP gained per run = floor(score × 0.1) + sessionCoins × 2
+   Target: 5000 XP per week (resets every Monday).
+   Reaching 5000 awards +100 coins once per week.
+   driverLevel is a lifetime title tracker — never resets.
+──────────────────────────────────────────────────────────────────────────── */
+const WEEKLY_XP_TARGET = 5000;
+let driverXP          = loadLS('rr_xp', 0);
+let driverLevel       = loadLS('rr_level', 1);
+let weeklyXP          = loadLS('rr_weekly_xp', 0);
+let weeklyXpDate      = loadLS('rr_weekly_xp_date', '');
+let weeklyXpRewarded  = loadLS('rr_weekly_xp_rewarded', false);
+let _lastXpGained     = 0;
+
+(function(){
+  const _mon=_getMondayStr();
+  if(weeklyXpDate!==_mon){
+    weeklyXP=0;weeklyXpDate=_mon;weeklyXpRewarded=false;
+    saveLS('rr_weekly_xp',0);saveLS('rr_weekly_xp_date',_mon);saveLS('rr_weekly_xp_rewarded',false);
+  }
+})();
+
+const LEVEL_TITLES=['ROOKIE','STREET RACER','SPEED DEMON','GHOST RIDER','APEX HUNTER','LEGEND'];
+function getDriverTitle(){return LEVEL_TITLES[Math.min(driverLevel-1,LEVEL_TITLES.length-1)];}
 
 /* ── Achievements ────────────────────────────────────────────────────────── */
 const ACHIEVEMENTS=[
-  {id:'first_nm',    text:'RAZOR EDGE',     desc:'Get your first near-miss',         reward:10},
-  {id:'combo_4x',    text:'UNTOUCHABLE',    desc:'Reach a 4\u00d7 combo streak',     reward:25},
-  {id:'stage_5',     text:'ROAD WARRIOR',   desc:'Survive to stage 5',               reward:30},
-  {id:'stage_10',    text:'APEX HUNTER',    desc:'Survive to stage 10',              reward:50},
-  {id:'nitro3',      text:'DEMOLITION',     desc:'Use nitro 3 times in one run',     reward:35},
-  {id:'coins50run',  text:'COIN MAGNET',    desc:'Collect 50 coins in one run',      reward:40},
-  {id:'boss_gone',   text:'BOSS SLAYER',    desc:'Outlast a boss car',               reward:45},
-  {id:'runs_10',     text:'COMMITTED',      desc:'Play 10 total runs',               reward:20},
-  {id:'runs_50',     text:'OBSESSED',       desc:'Play 50 total runs',               reward:50},
-  {id:'nm_100',      text:'GHOST DRIVER',   desc:'100 lifetime near-misses',         reward:75},
+  {id:'first_nm',    text:'CLOSE CALL',        desc:'Got your first near-miss',        reward:10},
+  {id:'combo_4x',    text:'ON FIRE \u00d74',   desc:'Hit a 4\u00d7 combo streak',      reward:25},
+  {id:'stage_5',     text:'STAGE 5 CLEAR',     desc:'Survived to stage 5',             reward:30},
+  {id:'stage_10',    text:'STAGE 10 BEAST',    desc:'Survived to stage 10',            reward:50},
+  {id:'nitro3',      text:'NITRO \u00d73',     desc:'Used nitro 3 times in one run',   reward:35},
+  {id:'coins50run',  text:'50 COINS RUN',      desc:'Collected 50 coins in one run',   reward:40},
+  {id:'boss_gone',   text:'BOSS OUTLASTED',    desc:'Outlasted a boss pursuit',        reward:45},
+  {id:'runs_10',     text:'10 RUNS DONE',      desc:'Played 10 total runs',            reward:20},
+  {id:'runs_50',     text:'50 RUNS DONE',      desc:'Played 50 total runs',            reward:50},
+  {id:'nm_100',      text:'100 NEAR-MISSES',   desc:'100 near-misses lifetime',        reward:75},
 ];
-let unlockedAchievements = loadLS('rr_achievements', []);
+let unlockedAchievements=loadLS('rr_achievements',[]);
+
+/* ── Daily Streak ────────────────────────────────────────────────────────── */
+let streakCount         = loadLS('rr_streak_count', 0);
+let streakLastDate      = loadLS('rr_streak_date', '');
+let streakRewardClaimed = loadLS('rr_streak_claimed_today', false);
+let streakRewardAmount  = 0;
+(function(){
+  const _today=new Date().toDateString();
+  const _yesterday=new Date(Date.now()-86400000).toDateString();
+  if(streakLastDate===''){streakCount=1;streakLastDate=_today;streakRewardClaimed=false;}
+  else if(streakLastDate===_today){}
+  else if(streakLastDate===_yesterday){streakCount++;streakLastDate=_today;streakRewardClaimed=false;}
+  else{streakCount=1;streakLastDate=_today;streakRewardClaimed=false;}
+  if(!streakRewardClaimed){
+    streakRewardAmount=streakCount>=30?150:streakCount>=14?75:streakCount>=7?50:streakCount>=3?25:10;
+    coinBank+=streakRewardAmount;saveLS('rr_coins2',coinBank);streakRewardClaimed=true;
+  }
+  saveLS('rr_streak_count',streakCount);saveLS('rr_streak_date',streakLastDate);saveLS('rr_streak_claimed_today',streakRewardClaimed);
+})();
+function _streakNextMilestone(n){
+  if(n<3)return{day:3,coins:25};if(n<7)return{day:7,coins:50};
+  if(n<14)return{day:14,coins:75};if(n<30)return{day:30,coins:150};return null;
+}
+
+/* ── Weekly Mission state (loaded by logic.js, declared here for render.js) */
+let weeklyMissionIdx = loadLS('rr_weekly_mission_idx', 0);
+let weeklyResetDate  = loadLS('rr_weekly_reset_date',  '');
+let weeklyAllDone    = loadLS('rr_weekly_all_done',    false);
 
 function saveLifetimeStats(){
   statTotalRuns++;
   if(runMaxCombo>statBestCombo)statBestCombo=runMaxCombo;
   statTotalMisses+=runNearMisses;
   statTotalCoins+=sessionCoins;
-  const runDist=parseFloat((distanceTravelled/15120).toFixed(2)); // km
+  const runDist=parseFloat((distanceTravelled/15120).toFixed(2));
   if(runDist>bestDistance){bestDistance=runDist;saveLS('rr_best_dist_km',bestDistance);}
-  saveLS('rr_stat_runs',statTotalRuns);
-  saveLS('rr_stat_combo',statBestCombo);
-  saveLS('rr_stat_misses',statTotalMisses);
-  saveLS('rr_stat_coins',statTotalCoins);
-  // ── Award XP ──
-  _lastXpGained = Math.floor(Math.floor(score) * 0.1) + sessionCoins * 2;
-  driverXP += _lastXpGained;
-  const _xpNeeded = 500 * driverLevel;
-  if(driverXP >= _xpNeeded){ driverLevel++; driverXP -= _xpNeeded; }
-  saveLS('rr_xp', driverXP); saveLS('rr_level', driverLevel);
-}
-
-/* ── Daily Streak ────────────────────────────────────────────────────────── */
-let streakCount         = loadLS('rr_streak_count', 0);
-let streakLastDate      = loadLS('rr_streak_date', '');
-let streakRewardClaimed = loadLS('rr_streak_claimed_today', false);
-let streakRewardAmount  = 0; // coins awarded this session (0 = already claimed)
-
-(function(){
-  const _today     = new Date().toDateString();
-  const _yesterday = new Date(Date.now() - 86400000).toDateString();
-  if(streakLastDate === ''){
-    streakCount = 1; streakLastDate = _today; streakRewardClaimed = false;
-  } else if(streakLastDate === _today){
-    // already visited today — do nothing
-  } else if(streakLastDate === _yesterday){
-    streakCount++; streakLastDate = _today; streakRewardClaimed = false;
-  } else {
-    streakCount = 1; streakLastDate = _today; streakRewardClaimed = false;
+  saveLS('rr_stat_runs',statTotalRuns);saveLS('rr_stat_combo',statBestCombo);
+  saveLS('rr_stat_misses',statTotalMisses);saveLS('rr_stat_coins',statTotalCoins);
+  // ── Award XP (lifetime level) ──
+  _lastXpGained=Math.floor(Math.floor(score)*0.1)+sessionCoins*2;
+  driverXP+=_lastXpGained;
+  const _xpNeeded=500*driverLevel;
+  if(driverXP>=_xpNeeded){driverLevel++;driverXP-=_xpNeeded;}
+  saveLS('rr_xp',driverXP);saveLS('rr_level',driverLevel);
+  // ── Weekly season XP ──
+  weeklyXP+=_lastXpGained;
+  if(weeklyXP>=WEEKLY_XP_TARGET&&!weeklyXpRewarded){
+    weeklyXpRewarded=true;coinBank+=100;saveLS('rr_coins2',coinBank);
+    if(cvalEl)cvalEl.textContent=coinBank;
   }
-  if(!streakRewardClaimed){
-    streakRewardAmount = streakCount>=30?150:streakCount>=14?75:streakCount>=7?50:streakCount>=3?25:10;
-    coinBank += streakRewardAmount;
-    saveLS('rr_coins2', coinBank);
-    streakRewardClaimed = true;
-  }
-  saveLS('rr_streak_count',         streakCount);
-  saveLS('rr_streak_date',          streakLastDate);
-  saveLS('rr_streak_claimed_today', streakRewardClaimed);
-})();
-
-function _streakNextMilestone(count){
-  if(count<3)  return {day:3,  coins:25};
-  if(count<7)  return {day:7,  coins:50};
-  if(count<14) return {day:14, coins:75};
-  if(count<30) return {day:30, coins:150};
-  return null;
+  saveLS('rr_weekly_xp',weeklyXP);saveLS('rr_weekly_xp_rewarded',weeklyXpRewarded);
 }
-
-/* ── Weekly Mission Chain ────────────────────────────────────────────────── */
-let weeklyMissionIdx = loadLS('rr_weekly_mission_idx', 0);
-let weeklyResetDate  = loadLS('rr_weekly_reset_date',  '');
-let weeklyAllDone    = loadLS('rr_weekly_all_done',    false);
 
 let showStats=false; // toggle stats overlay on intro screen
 let playMode=loadLS('rr_play_mode','swipe'); // 'swipe' or 'track'
@@ -634,8 +644,8 @@ let exitConfirmActive=false; // show exit-confirm overlay
 let score,frameCount,dashOff,baseSpd,spd;
 let distanceTravelled=0;
 let lastStages,stageNum,exhaustTimer,shakeAmt;
-let runNitroUsed=0;   // nitro firings this run (weekly mission + achievement)
-let runBossKilled=false; // boss defeated this run (achievement)
+let runNitroUsed=0;    // nitro fires this run — weekly mission + achievement
+let runBossKilled=false; // boss outlasted this run — achievement
 const DIST_PER_STAGE = 6000;
 const MAX_SPEED_STAGE = 17;
 let player,bloodPools;
@@ -1276,11 +1286,11 @@ canvas.addEventListener('mousedown', e=>{
 
   // GAMEOVER screen
 if(gst===ST.GAMEOVER){
-    const _GOpy=(H-476)/2-20,_GOph=476;
+    const _GOpy=(H-380)/2-20,_GOph=380;
     const _rbX=W/2-132-6,_rbY=_GOpy+_GOph-54,_rbW=132,_rbH=34;
     const _mbX=W/2+6,_mbY=_rbY,_mbW=132,_mbH=34;
     // SHARE button
-    const _shW=200,_shH=28,_shX=W/2-100,_shY=_GOpy+350;
+    const _shW=168,_shH=28,_shX=W/2-84,_shY=_GOpy+250;
     if(relX>=_shX&&relX<=_shX+_shW&&relY>=_shY&&relY<=_shY+_shH){
       _doShareRunSummary();return;
     }
@@ -1554,11 +1564,11 @@ canvas.addEventListener('touchend', e=>{
     if(gst===ST.GAMEOVER && relY>H-56 && relX>=W/2+6 && relX<=W/2+106){ _llOpenLeaderboard(); return; }
     // GAMEOVER: RETRY and MENU buttons
 if(gst===ST.GAMEOVER && isTap){
-      const _GOpy=(H-476)/2-20, _GOph=476;
+      const _GOpy=(H-380)/2-20, _GOph=380;
       const _rbX=W/2-132-6, _rbY=_GOpy+_GOph-54, _rbW=132, _rbH=34;
       const _mbX=W/2+6, _mbY=_rbY, _mbW=132, _mbH=34;
       // SHARE button
-      const _shW=200,_shH=28,_shX=W/2-100,_shY=_GOpy+350;
+      const _shW=168,_shH=28,_shX=W/2-84,_shY=_GOpy+250;
       if(relX>=_shX&&relX<=_shX+_shW&&relY>=_shY&&relY<=_shY+_shH){
         _doShareRunSummary();e.stopPropagation();return;
       }
@@ -1870,5 +1880,49 @@ if(bdvalEl)bdvalEl.textContent=bestDistance;
       setTimeout(()=>{b.style.display='none';},8000);
     }
   }
+})();
+
+/* ══════════════════════════════════════════════
+   VISIBILITY / FOCUS — pause game + mute audio
+   when app is backgrounded, screen turns off,
+   or browser tab is switched.
+   Uses visibilitychange (all platforms) +
+   pagehide/pageshow (iOS Safari fallback).
+   On return: AudioContext resumes but game stays
+   paused — player must tap to continue.
+══════════════════════════════════════════════ */
+(function(){
+  function _handleHide(){
+    // 1. Suspend Web Audio — stops ALL sound processing immediately
+    if(AC&&AC.state==='running'){try{AC.suspend();}catch(e){}}
+    // 2. Pause game if actively playing — leaves pause overlay visible
+    if((gst===ST.PLAYING||gst===ST.RESPAWNING)&&!gamePaused){
+      gamePaused=true;
+      const pb=document.getElementById('pauseBtn');if(pb)pb.textContent='▶';
+    }
+    // 3. Silence master gain for menu states (music was still audible)
+    if(masterGain){try{masterGain.gain.setTargetAtTime(0,AC?AC.currentTime:0,0.05);}catch(e){}}
+  }
+
+  function _handleShow(){
+    // Resume audio context — nodes continue from where they were
+    if(AC&&AC.state==='suspended'){try{AC.resume().then(()=>{
+      // Restore gain only if not muted by user
+      if(masterGain&&!bgMuted){
+        masterGain.gain.setTargetAtTime(1,AC.currentTime,0.12);
+      }
+    });}catch(e){}}
+    // Game stays paused — player explicitly taps to resume (existing pause overlay handles this)
+  }
+
+  // Primary: fires on tab switch, screen lock, app background (all browsers)
+  document.addEventListener('visibilitychange',()=>{
+    if(document.hidden)_handleHide();
+    else _handleShow();
+  });
+
+  // iOS Safari fallback: pagehide fires when Safari backgrounds the tab
+  window.addEventListener('pagehide',_handleHide,{passive:true});
+  window.addEventListener('pageshow',_handleShow,{passive:true});
 })();
 
