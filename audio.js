@@ -261,6 +261,31 @@ function snd(type){
     case 'saved':    mk(600,'sine',0.05,0.35,1800);mk(900,'sine',0.22,0.30,2200,0.06);nz(0.10,0.12,1800);break;
     case 'newRecord':[0,4,7,12,16,19,24].forEach((s,i)=>mk(523*Math.pow(2,s/12),'sine',0.25,0.22,null,i*0.06));break;
     case 'bossAppear':nz(0.35,0.45,280);mk(80,'sawtooth',0.55,0.55,50);mk(100,'sawtooth',0.40,0.40,40,0.20);break;
+    case 'bossWarning':{
+      // Deep bass drop — sine oscillator sweeping 55Hz→30Hz over 1.2s, gain 0→0.9→0
+      try{
+        const _bwo=AC.createOscillator(),_bwg=AC.createGain();
+        _bwo.type='sine';
+        _bwo.frequency.setValueAtTime(55,t);
+        _bwo.frequency.exponentialRampToValueAtTime(30,t+1.2);
+        _bwg.gain.setValueAtTime(0,t);
+        _bwg.gain.linearRampToValueAtTime(0.9,t+0.18);
+        _bwg.gain.exponentialRampToValueAtTime(0.001,t+1.2);
+        _bwo.connect(_bwg);_bwg.connect(_dest());
+        _bwo.start(t);_bwo.stop(t+1.22);
+        // Tension noise burst — low bandpass rumble underneath
+        const _bn=Math.ceil(AC.sampleRate*1.0),_bbuf=AC.createBuffer(1,_bn,AC.sampleRate),_bd=_bbuf.getChannelData(0);
+        for(let i=0;i<_bn;i++)_bd[i]=(Math.random()*2-1);
+        const _bsrc=AC.createBufferSource();_bsrc.buffer=_bbuf;
+        const _bf=AC.createBiquadFilter();_bf.type='lowpass';_bf.frequency.value=90;
+        const _bng=AC.createGain();
+        _bng.gain.setValueAtTime(0,t);
+        _bng.gain.linearRampToValueAtTime(0.35,t+0.20);
+        _bng.gain.exponentialRampToValueAtTime(0.001,t+1.0);
+        _bsrc.connect(_bf);_bf.connect(_bng);_bng.connect(_dest());
+        _bsrc.start(t);_bsrc.stop(t+1.02);
+      }catch(e){}
+      break;}
     case 'bossDefeated':[0,4,7,12,16,19,24,28].forEach((s,i)=>mk(440*Math.pow(2,s/12),'sine',0.22,0.22,null,i*0.05));break;
     case 'missionComplete':[0,4,7,12,16,19].forEach((s,i)=>mk(660*Math.pow(2,s/12),'sine',0.20,0.22,null,i*0.07));break;
     case 'shieldBlock':mk(500,'square',0.20,0.22,1100);nz(0.12,0.12,1400);break;

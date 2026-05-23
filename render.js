@@ -35,6 +35,26 @@
 function drawBackground(){
   ctx.fillStyle='#070910';
   ctx.fillRect(0,0,W,H);
+
+  // ── Parallax ambient light streaks — side kerb margins only ──
+  // Scrolls at 0.6× road speed (bgScrollY), creating depth sensation.
+  // Opacity is very low — pure atmosphere, never distracts.
+  if(PERF.tier!=='low' && bgScrollY>0){
+    ctx.save();
+    const _strH=52, _off=bgScrollY%_strH;
+    // Left margin streaks
+    ctx.globalAlpha=0.055;
+    ctx.fillStyle='#5878b8';
+    for(let y=-_strH+_off; y<H+_strH; y+=_strH){
+      ctx.fillRect(0, y, ROAD_L-2, _strH*0.38);
+    }
+    // Right margin streaks (offset by half a cycle for asymmetry)
+    const _off2=(bgScrollY+_strH*0.5)%_strH;
+    for(let y=-_strH+_off2; y<H+_strH; y+=_strH){
+      ctx.fillRect(ROAD_R+2, y, W-ROAD_R-2, _strH*0.38);
+    }
+    ctx.restore();
+  }
 }
 
 function drawWeatherOverlay(){
@@ -2757,6 +2777,17 @@ function draw(){
   drawSpeedOverlay();
   drawWeatherOverlay();
   drawVignette();
+
+  // ── 4× Combo full-screen cyan flash ──
+  // Fires when comboMult reaches 4+ and comboFlashTimer is live.
+  // Fades from 0.22 opacity over the first 3 frames, then decays to 0.
+  if(comboMult>=4 && comboFlashTimer>0){
+    const _cfA = (comboFlashTimer<=3) ? (comboFlashTimer/3)*0.22 : 0.22;
+    ctx.save(); ctx.globalAlpha=_cfA;
+    ctx.fillStyle='rgba(6,182,212,1)'; ctx.fillRect(0,0,W,H);
+    ctx.restore();
+  }
+
   drawVerticalPowerBars();
 
   // ── Danger vignette — last life ──
@@ -2887,6 +2918,35 @@ function draw(){
     ctx.fillStyle='rgba(0,230,118,0.06)';ctx.fillRect(0,0,W,H);
     ctx.font="bold 10px 'Orbitron',sans-serif";ctx.textAlign='center';ctx.fillStyle='rgba(0,230,118,0.65)';
     ctx.fillText('CLEAR ROAD',W/2,H-56);
+    ctx.restore();
+  }
+
+  // ── Boss warning cinematic ──
+  // Runs during the window between bossWarned=true and bossActive=true (boss spawning).
+  // Shows a pulsing red vignette + centred warning text to build tension.
+  if(bossWarned && !bossActive && (gst===ST.PLAYING||gst===ST.RESPAWNING)){
+    // Vignette: radial gradient, red at edges, transparent centre
+    // Alpha pulses between 0.15 and 0.40 using sin on frameCount
+    const _bwPulse = 0.275 + fastSin(frameCount*0.12)*0.125; // 0.15–0.40
+    ctx.save();
+    if(!GC.bossWarnVig){
+      const _bwg=ctx.createRadialGradient(W/2,H/2,H*0.16,W/2,H/2,H*0.74);
+      _bwg.addColorStop(0,'transparent');
+      _bwg.addColorStop(1,'rgba(220,20,20,1)');
+      GC.bossWarnVig=_bwg;
+    }
+    ctx.globalAlpha=_bwPulse;
+    ctx.fillStyle=GC.bossWarnVig;
+    ctx.fillRect(0,0,W,H);
+    // Warning text — centred, pulsing alpha, red with shadow
+    const _bwTxtA = 0.60 + fastSin(frameCount*0.20)*0.40;
+    ctx.globalAlpha=_bwTxtA;
+    ctx.textAlign='center'; ctx.textBaseline='middle';
+    ctx.font="bold 14px 'Orbitron',sans-serif";
+    ctx.fillStyle='#ff2222';
+    ctx.shadowColor='#ff0000'; ctx.shadowBlur=10;
+    ctx.fillText('⚠ BOSS INCOMING',W/2,H/2);
+    ctx.shadowBlur=0;
     ctx.restore();
   }
 

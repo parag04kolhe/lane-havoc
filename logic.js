@@ -1417,6 +1417,9 @@ function update(dt){
   // dashOff advances only during active play — ties lane dashes and kerb stripes
   // directly to game speed. Stops during crash, revive, gameover.
   dashOff+=spd*dt;
+  // bgScrollY: parallax ambient background scroll — slower than road dashes,
+  // creates depth sensation. Wraps at 1000 to prevent float growth.
+  bgScrollY=(bgScrollY+spd*0.6*dt)%1000;
 
   // Score increases only when actually moving — zero during tutorial pauses
   const _sMov=(tutPhase>=0)?tutSpeedCurrent:1.0;
@@ -1459,6 +1462,7 @@ function update(dt){
       if(stageNum>=8 && (stageNum-8)%5===0){
         stageFlash={stage:stageNum,timer:220,boss:true,bonus:0};
         bossWarned=true;
+        snd('bossWarning');
         setTimeout(()=>{spawnBoss();},800);
       } else {
         stageFlash={stage:stageNum,timer:220,boss:false,bonus:stageBonus,isMilestone:(stageNum%5===0)};
