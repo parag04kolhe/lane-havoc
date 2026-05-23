@@ -1573,7 +1573,7 @@ function update(dt){
     bossTimer-=dt;
     if(bossCar.y>H+120||bossTimer<=0){
       // Boss defeated / escaped — reward
-      bossActive=false;bossCar=null;
+      bossActive=false;bossCar=null;bossWarned=false;
       runBossKilled=true;
       const bossReward=80;
       score+=bossReward;coinBank+=3;saveLS('rr_coins2',coinBank);cvalEl.textContent=coinBank;
@@ -1584,7 +1584,7 @@ function update(dt){
       // Boss collision — only check if boss is still alive
       const px=player.visualX,py=player.y-player.jumpOff;
       if(Math.abs(px-bossCar.x)<34&&Math.abs(py-bossCar.y)<52){
-        bossActive=false;bossCar=null;
+        bossActive=false;bossCar=null;bossWarned=false;
         triggerCrash('car',px,py,-1);return;
       }
     }
@@ -2249,6 +2249,7 @@ function _mkConfetti(){
 function spawnBoss(){
   if(!bossActive){
     bossActive=true;
+    bossWarned=false; // cinematic ends the instant boss spawns
     bossCar={x:player.visualX,y:-100,id:'boss'};
     bossTimer=480; // 8 seconds at 60fps
     snd('bossAppear');haptic([80,20,80]);

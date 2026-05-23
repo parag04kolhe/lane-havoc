@@ -2923,28 +2923,29 @@ function draw(){
 
   // ── Boss warning cinematic ──
   // Runs during the window between bossWarned=true and bossActive=true (boss spawning).
-  // Shows a pulsing red vignette + centred warning text to build tension.
+  // Shows a pulsing cyan-blue vignette + centred warning text to build tension.
+  // Blue chosen for visibility on dark road and to echo police light colours.
   if(bossWarned && !bossActive && (gst===ST.PLAYING||gst===ST.RESPAWNING)){
-    // Vignette: radial gradient, red at edges, transparent centre
+    // Vignette: radial gradient, cyan-blue at edges, transparent centre
     // Alpha pulses between 0.15 and 0.40 using sin on frameCount
     const _bwPulse = 0.275 + fastSin(frameCount*0.12)*0.125; // 0.15–0.40
     ctx.save();
     if(!GC.bossWarnVig){
       const _bwg=ctx.createRadialGradient(W/2,H/2,H*0.16,W/2,H/2,H*0.74);
       _bwg.addColorStop(0,'transparent');
-      _bwg.addColorStop(1,'rgba(220,20,20,1)');
+      _bwg.addColorStop(1,'rgba(30,80,220,1)');
       GC.bossWarnVig=_bwg;
     }
     ctx.globalAlpha=_bwPulse;
     ctx.fillStyle=GC.bossWarnVig;
     ctx.fillRect(0,0,W,H);
-    // Warning text — centred, pulsing alpha, red with shadow
+    // Warning text — centred, pulsing alpha, cyan-blue with glow shadow
     const _bwTxtA = 0.60 + fastSin(frameCount*0.20)*0.40;
     ctx.globalAlpha=_bwTxtA;
     ctx.textAlign='center'; ctx.textBaseline='middle';
     ctx.font="bold 14px 'Orbitron',sans-serif";
-    ctx.fillStyle='#ff2222';
-    ctx.shadowColor='#ff0000'; ctx.shadowBlur=10;
+    ctx.fillStyle='#5599ff';
+    ctx.shadowColor='#2255ff'; ctx.shadowBlur=12;
     ctx.fillText('⚠ BOSS INCOMING',W/2,H/2);
     ctx.shadowBlur=0;
     ctx.restore();
