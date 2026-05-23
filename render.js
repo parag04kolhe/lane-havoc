@@ -3200,6 +3200,27 @@ function draw(){
   // Tutorial rewind overlay — blue tint + REWIND text
   if(tutRewindActive && (gst===ST.PLAYING||gst===ST.RESPAWNING)) _drawRewindOverlay();
   drawComboMeter();
+
+  // ── CHALLENGE GHOST SCORE — shown below score circle if arrived via challenge link ──
+  // Scorebox: left:8 top:48 size:44×44. Ghost pill sits just below combo badge (~y=104).
+  if((gst===ST.PLAYING||gst===ST.RESPAWNING||gst===ST.CRASHING) &&
+     typeof challengeScore!=='undefined' && challengeScore > 0){
+    const _ghCX=30, _ghY=104, _ghW=60, _ghH=16;
+    const _ghX=_ghCX-_ghW/2;
+    const _beaten = Math.floor(score) >= challengeScore;
+    const _ghCol  = _beaten ? '#4ade80' : '#22d3ee';
+    ctx.save();
+    ctx.fillStyle='rgba(6,20,50,0.90)';
+    rr(_ghX,_ghY,_ghW,_ghH,5);ctx.fill();
+    ctx.save();ctx.shadowColor=_ghCol;ctx.shadowBlur=7;
+    ctx.strokeStyle=_ghCol;ctx.lineWidth=1;
+    rr(_ghX,_ghY,_ghW,_ghH,5);ctx.stroke();ctx.restore();
+    ctx.font="700 7px 'Orbitron',sans-serif";ctx.fillStyle=_ghCol;
+    ctx.textAlign='center';ctx.textBaseline='middle';
+    const _ghLabel = (_beaten?'\u2713 ':'\uD83D\uDC7B ') + challengeScore.toLocaleString();
+    ctx.fillText(_ghLabel, _ghCX, _ghY+_ghH/2);
+    ctx.restore();
+  }
   drawActivePowerUps();
   drawGunFireHint();
   drawPlayerPowerStatus();
@@ -4657,6 +4678,34 @@ function drawSplash(){
     const mtY=pbRestY+pbH+8;
     const sbRow1Y=mtY+mtH+8, sbRow2Y=sbRow1Y+sbH+sbGapY;
 
+    // ── CHALLENGE BANNER — shown above PLAY when arriving via a challenge link ──
+    if(typeof challengeScore!=='undefined' && challengeScore>0 && menuFadeIn>0.2){
+      const cbanW=286, cbanH=30, cbanX=W/2-cbanW/2, cbanY=pbRestY-46+playSlide;
+      const cbanF=clamp((t-152)/14,0,1);
+      if(cbanF>0.01){
+        ctx.save();ctx.globalAlpha=cbanF*menuFadeIn;
+        // Outer glow aura
+        ctx.shadowColor='#06b6d4';ctx.shadowBlur=18;
+        ctx.fillStyle='rgba(6,182,212,0.08)';
+        rr(cbanX-4,cbanY-4,cbanW+8,cbanH+8,12);ctx.fill();
+        // Pill background
+        ctx.shadowBlur=0;
+        ctx.fillStyle='rgba(6,20,40,0.93)';rr(cbanX,cbanY,cbanW,cbanH,8);ctx.fill();
+        // Border glow
+        ctx.save();ctx.shadowColor='#06b6d4';ctx.shadowBlur=8;
+        ctx.strokeStyle='#06b6d4';ctx.lineWidth=1.5;
+        rr(cbanX,cbanY,cbanW,cbanH,8);ctx.stroke();
+        ctx.restore();
+        // Text
+        const _cn2=(typeof challengeName!=='undefined'?challengeName:'Someone').toUpperCase();
+        const _cs2=(typeof challengeScore!=='undefined'?challengeScore:0).toLocaleString();
+        ctx.font="bold 11px 'Orbitron',sans-serif";ctx.fillStyle='#22d3ee';
+        ctx.textAlign='center';ctx.textBaseline='middle';
+        ctx.fillText('\u26A1  BEAT '+_cn2+'\u2019S SCORE: '+_cs2, W/2, cbanY+cbanH/2);
+        ctx.restore();
+      }
+    }
+
     // ── PLAY button — slides up from below (tied to menuFadeIn) ──
     const playSlide=(1-menuFadeIn)*28; // starts 28px low, rises to resting position
     const pbY=pbRestY+playSlide;
@@ -5258,6 +5307,22 @@ function drawIntro(){
   ctx.save();ctx.strokeStyle='rgba(0,230,118,0.15)';ctx.lineWidth=1;
   ctx.beginPath();ctx.moveTo(CX+16,footY);ctx.lineTo(CX+CW-16,footY);ctx.stroke();
   ctx.restore();
+
+  // ── CHALLENGE BANNER — shown if player arrived via a challenge link ──
+  if(typeof challengeScore!=='undefined' && challengeScore>0){
+    const _cibW=286, _cibH=28, _cibX=W/2-_cibW/2, _cibY=pbY-40;
+    ctx.save();
+    ctx.shadowColor='#06b6d4';ctx.shadowBlur=14;
+    ctx.fillStyle='rgba(6,20,40,0.93)';rr(_cibX,_cibY,_cibW,_cibH,8);ctx.fill();
+    ctx.shadowBlur=6;ctx.strokeStyle='#06b6d4';ctx.lineWidth=1.5;
+    rr(_cibX,_cibY,_cibW,_cibH,8);ctx.stroke();ctx.shadowBlur=0;
+    const _cin=(typeof challengeName!=='undefined'?challengeName:'Someone').toUpperCase();
+    const _cis=(typeof challengeScore!=='undefined'?challengeScore:0).toLocaleString();
+    ctx.font="bold 10px 'Orbitron',sans-serif";ctx.fillStyle='#22d3ee';
+    ctx.textAlign='center';ctx.textBaseline='middle';
+    ctx.fillText('\u26A1  BEAT '+_cin+'\u2019S SCORE: '+_cis, W/2, _cibY+_cibH/2);
+    ctx.restore();
+  }
 
   // PLAY button — center, pulsing green
   const pbW=110,pbH=34,pbX=W/2-pbW/2,pbY=footY-56;

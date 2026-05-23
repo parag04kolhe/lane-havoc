@@ -575,40 +575,206 @@ function checkAchievements(){
    SHARE — Run Summary screenshot + text + link
 ══════════════════════════════════════════════ */
 function _doShareRunSummary(){
-  const _finalScore=Math.floor(score);
-  const runDist=parseFloat((distanceTravelled/15120).toFixed(2));
-  // ⚠️ Replace the URL below with your real Play Store link once approved
-  const PLAY_URL='https://play.google.com/store/apps/details?id=com.youname.lanehavoc';
-  const shareText=
-    '🏎️ Lane Havoc — My Run!\n'+
-    '📊 Score: '+_finalScore+'  |  Stage: '+stageNum+'\n'+
-    '📏 Distance: '+runDist+'km  |  🪙 Coins: +'+sessionCoins+'\n'+
-    '💨 Near-Misses: '+runNearMisses+'  |  ⚡ Best Streak: '+runMaxCombo+'×\n\n'+
-    'Think you can beat me? Download Lane Havoc — the intelligent arcade racer:\n'+
-    PLAY_URL;
+  const _finalScore = Math.floor(score);
+  const runDist     = parseFloat((distanceTravelled/15120).toFixed(2));
+  const km          = (distanceTravelled/15120*2.4).toFixed(2);
+  const cm          = runMaxCombo>=10?4:runMaxCombo>=6?3:runMaxCombo>=3?2:1;
 
-  const _tryShare=function(file){
-    const data={title:'Lane Havoc — My Run Summary',text:shareText};
-    if(file&&navigator.canShare&&navigator.canShare({files:[file]})){data.files=[file];}
+  // Challenge link appended to every share — each share becomes a live challenge
+  const _baseURL = (function(){
+    try{ return window.location.origin + window.location.pathname; }catch(e){ return 'https://lanehavoc.app/'; }
+  })();
+  const _pName   = (typeof playerName !== 'undefined' && playerName) ? playerName : 'Me';
+  const _challengeURL = _baseURL +
+    '?challenge=' + _finalScore +
+    '&name='      + encodeURIComponent(_pName.substring(0,16));
+
+  const shareText =
+    '🏎️ Lane Havoc — My Run!\n' +
+    '📊 Score: ' + _finalScore + '  |  Stage: ' + stageNum + '\n' +
+    '📏 ' + km + ' km  |  🔥 ' + runMaxCombo + '× streak  |  🪙 +' + sessionCoins + '\n\n' +
+    '⚡ Can you beat me? ' + _challengeURL;
+
+  /* ── Build the 400×400 share card on an off-screen canvas ── */
+  function _buildCard(cardCtx){
+    const CW=400, CH=400;
+    const sc = (function(){
+      try{
+        const skin = (typeof getSkin==='function') ? getSkin() : null;
+        return (skin && skin.color) ? skin.color : '#00e676';
+      }catch(e){ return '#00e676'; }
+    })();
+
+    cardCtx.fillStyle='#0a0c14';
+    cardCtx.fillRect(0,0,CW,CH);
+
+    // Subtle grid
+    cardCtx.save();
+    cardCtx.globalAlpha=0.04;cardCtx.strokeStyle='#38bdf8';cardCtx.lineWidth=1;
+    for(let x=0;x<CW;x+=28){cardCtx.beginPath();cardCtx.moveTo(x,0);cardCtx.lineTo(x,CH);cardCtx.stroke();}
+    for(let y=0;y<CH;y+=28){cardCtx.beginPath();cardCtx.moveTo(0,y);cardCtx.lineTo(CW,y);cardCtx.stroke();}
+    cardCtx.restore();
+
+    // Speed-line halo
+    const carCY=148;
+    const halo=cardCtx.createRadialGradient(CW/2,carCY,12,CW/2,carCY,100);
+    halo.addColorStop(0,sc+'28');halo.addColorStop(0.5,sc+'0c');halo.addColorStop(1,'transparent');
+    cardCtx.fillStyle=halo;cardCtx.fillRect(0,55,CW,195);
+
+    // Speed lines
+    cardCtx.save();cardCtx.globalAlpha=0.07;
+    for(let i=0;i<18;i++){
+      const a=(i/18)*Math.PI*2;const len=60+(i*7)%70;
+      const sx=CW/2+Math.cos(a)*32, sy=carCY+Math.sin(a)*20;
+      const ex=CW/2+Math.cos(a)*(32+len), ey=carCY+Math.sin(a)*(20+len*0.45);
+      const g=cardCtx.createLinearGradient(sx,sy,ex,ey);
+      g.addColorStop(0,sc);g.addColorStop(1,'transparent');
+      cardCtx.strokeStyle=g;cardCtx.lineWidth=0.7+(i%3)*0.4;
+      cardCtx.beginPath();cardCtx.moveTo(sx,sy);cardCtx.lineTo(ex,ey);cardCtx.stroke();
+    }
+    cardCtx.restore();
+
+    // Game logo
+    const _logo = window._LANE_HAVOC_LOGO;
+    if(_logo&&_logo.complete&&_logo.naturalWidth>0){
+      const lH=70, lW=Math.round(lH*_logo.naturalWidth/_logo.naturalHeight);
+      cardCtx.save();
+      cardCtx.shadowColor=sc;cardCtx.shadowBlur=16;
+      cardCtx.drawImage(_logo, Math.round(CW/2-lW/2), 8, lW, lH);
+      cardCtx.restore();
+    }
+
+    // Player car image or canvas fallback
+    const _carImg = window._CAR_PLAYER;
+    if(_carImg&&_carImg.complete&&_carImg.naturalWidth>0){
+      const cW=62, cH=Math.round(cW*_carImg.naturalHeight/_carImg.naturalWidth);
+      const cX=Math.round(CW/2-cW/2), cY=Math.round(carCY-cH/2);
+      cardCtx.drawImage(_carImg, cX, cY, cW, cH);
+      // Skin colour tint if not default green
+      if(sc!=='#00e676'&&sc!=='#22c55e'){
+        cardCtx.save();cardCtx.globalAlpha=0.28;cardCtx.globalCompositeOperation='source-atop';
+        cardCtx.fillStyle=sc;cardCtx.fillRect(cX,cY,cW,cH);cardCtx.restore();
+      }
+      // Exhaust flame
+      [cX+12,cX+cW-12].forEach(function(ex){
+        const fg=cardCtx.createLinearGradient(ex,cY+cH-2,ex,cY+cH+20);
+        fg.addColorStop(0,'#ffffaa');fg.addColorStop(0.35,'#ff8800');
+        fg.addColorStop(0.7,sc+'aa');fg.addColorStop(1,'transparent');
+        cardCtx.save();cardCtx.globalAlpha=0.80;cardCtx.fillStyle=fg;
+        cardCtx.beginPath();cardCtx.ellipse(ex,cY+cH+8,3,10,0,0,Math.PI*2);cardCtx.fill();
+        cardCtx.restore();
+      });
+    } else {
+      // Fallback car shape
+      cardCtx.save();
+      cardCtx.fillStyle=sc;
+      _rrCard(cardCtx, CW/2-18, carCY-30, 36, 60, 6);
+      cardCtx.fill();
+      cardCtx.fillStyle='rgba(180,220,255,0.85)';
+      _rrCard(cardCtx, CW/2-12, carCY-26, 24, 20, 4);
+      cardCtx.fill();
+      cardCtx.restore();
+    }
+
+    // Stage cleared ribbon
+    const rY=228,rW=210,rH=22,rX=CW/2-rW/2;
+    cardCtx.save();
+    const rg=cardCtx.createLinearGradient(rX,rY,rX+rW,rY);
+    rg.addColorStop(0,'rgba(245,158,11,0)');rg.addColorStop(0.14,'rgba(245,158,11,0.92)');
+    rg.addColorStop(0.86,'rgba(245,158,11,0.92)');rg.addColorStop(1,'rgba(245,158,11,0)');
+    cardCtx.fillStyle=rg;cardCtx.fillRect(rX,rY,rW,rH);
+    cardCtx.font="bold 10px 'Orbitron',monospace";
+    cardCtx.fillStyle='#0a0c14';cardCtx.textAlign='center';cardCtx.textBaseline='middle';
+    cardCtx.fillText('\u2605  STAGE '+stageNum+' CLEARED  \u2605', CW/2, rY+11);
+    cardCtx.restore();
+
+    // Score
+    const scoreStr = _finalScore.toLocaleString();
+    const scoreY   = rY+rH+38;
+    cardCtx.save();
+    cardCtx.shadowColor=sc;cardCtx.shadowBlur=22;
+    cardCtx.font="900 38px 'Orbitron',monospace";
+    cardCtx.fillStyle='#ffffff';cardCtx.textAlign='center';cardCtx.textBaseline='middle';
+    cardCtx.fillText(scoreStr, CW/2, scoreY);
+    cardCtx.restore();
+
+    // Stat rows
+    const sY=scoreY+20, rHH=26;
+    const sc2=runMaxCombo>=10?'#ef4444':runMaxCombo>=5?'#f97316':'#fb923c';
+    _statRowCard(cardCtx,CW,sY,       '\uD83D\uDD25',runMaxCombo+'x  NEAR-MISS STREAK',sc2);
+    _statRowCard(cardCtx,CW,sY+rHH,   '\uD83C\uDFC6','BEST COMBO: '+cm+'x','#facc15');
+    _statRowCard(cardCtx,CW,sY+rHH*2, '\uD83D\uDCCF',km+' KM SURVIVED','#4ade80');
+
+    // Divider + footer
+    const divY=sY+rHH*3+6;
+    cardCtx.save();
+    cardCtx.globalAlpha=0.14;cardCtx.strokeStyle='#fff';cardCtx.lineWidth=1;
+    cardCtx.setLineDash([4,6]);
+    cardCtx.beginPath();cardCtx.moveTo(40,divY);cardCtx.lineTo(CW-40,divY);cardCtx.stroke();
+    cardCtx.setLineDash([]);
+    cardCtx.restore();
+    cardCtx.font="600 9px 'Rajdhani',sans-serif";
+    cardCtx.fillStyle='rgba(255,255,255,0.22)';cardCtx.textAlign='center';
+    cardCtx.textBaseline='middle';
+    cardCtx.fillText('Lane Havoc  \u2022  CAN YOU BEAT THIS?', CW/2, divY+13);
+  }
+
+  // Rounded-rect helper for off-screen canvas (can't use global rr)
+  function _rrCard(c,x,y,w,h,r){
+    c.beginPath();
+    c.moveTo(x+r,y);c.lineTo(x+w-r,y);c.arcTo(x+w,y,x+w,y+r,r);
+    c.lineTo(x+w,y+h-r);c.arcTo(x+w,y+h,x+w-r,y+h,r);
+    c.lineTo(x+r,y+h);c.arcTo(x,y+h,x,y+h-r,r);
+    c.lineTo(x,y+r);c.arcTo(x,y,x+r,y,r);c.closePath();
+  }
+
+  function _statRowCard(c,CW,y,emoji,text,color){
+    const rW=290,rH=22,rx=CW/2-rW/2;
+    c.save();c.globalAlpha=0.17;c.fillStyle=color;
+    _rrCard(c,rx,y,rW,rH,5);c.fill();c.restore();
+    c.fillStyle=color;c.fillRect(rx,y,3,rH);
+    c.font="700 10px 'Orbitron',monospace";c.fillStyle=color;
+    c.textAlign='left';c.textBaseline='middle';
+    c.fillText(emoji+'  '+text, rx+12, y+11);
+  }
+
+  /* ── Try to export card as PNG and share ── */
+  function _tryShare(file){
+    const shareData={title:'Lane Havoc — My Run',text:shareText};
+    if(file&&navigator.canShare&&navigator.canShare({files:[file]})){
+      shareData.files=[file];
+    }
     if(navigator.share){
-      navigator.share(data).catch(function(){});
+      navigator.share(shareData).catch(function(){});
     } else if(navigator.clipboard){
       navigator.clipboard.writeText(shareText).catch(function(){});
     }
-  };
+  }
 
   try{
-    canvas.toBlob(function(blob){
-      if(blob){
+    // Prefer OffscreenCanvas for off-thread rendering; fall back to hidden <canvas>
+    var _oc, _octx;
+    if(typeof OffscreenCanvas!=='undefined'){
+      _oc = new OffscreenCanvas(400,400);
+      _octx = _oc.getContext('2d');
+      _buildCard(_octx);
+      _oc.convertToBlob({type:'image/png'}).then(function(blob){
         var f=new File([blob],'lane-havoc-run.png',{type:'image/png'});
         _tryShare(f);
-      } else {
-        _tryShare(null);
-      }
-    },'image/png');
-  } catch(e){
-    _tryShare(null);
-  }
+      }).catch(function(){ _tryShare(null); });
+    } else {
+      var _hc=document.createElement('canvas');
+      _hc.width=400;_hc.height=400;
+      _octx=_hc.getContext('2d');
+      _buildCard(_octx);
+      _hc.toBlob(function(blob){
+        if(blob){
+          var f=new File([blob],'lane-havoc-run.png',{type:'image/png'});
+          _tryShare(f);
+        } else { _tryShare(null); }
+      },'image/png');
+    }
+  } catch(e){ _tryShare(null); }
 }
 loadWeeklyMission();
 

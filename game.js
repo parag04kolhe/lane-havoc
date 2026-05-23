@@ -118,6 +118,24 @@ const _copyrightEl = document.getElementById('copyright-notice');
 let _lastGstForCopyright = -1; // tracks last state to avoid DOM write every frame
 
 /* ══════════════════════════════════════════════
+   CHALLENGE LINK SYSTEM
+   Parses ?challenge=SCORE&name=NAME from the URL.
+   If present, a banner is shown on the splash/intro
+   screen and a ghost score appears in the HUD.
+══════════════════════════════════════════════ */
+let challengeScore = 0;
+let challengeName  = 'Someone';
+(function(){
+  try{
+    const _p = new URLSearchParams(window.location.search);
+    const _cs = parseInt(_p.get('challenge')) || 0;
+    const _cn = (_p.get('name') || '').trim().substring(0, 16);
+    if(_cs > 0){ challengeScore = _cs; }
+    if(_cn)     { challengeName  = _cn; }
+  }catch(e){}
+})();
+
+/* ══════════════════════════════════════════════
    STATE — declared early so PERF.tick() can reference ST
 ══════════════════════════════════════════════ */
 const ST={ENGINE:10,SPLASH:7,INTRO:0,PLAYING:1,CRASHING:2,RESPAWNING:3,GAMEOVER:4,SHOP:5,REVIVE:6,HOWTO:8,STATS:9,LEADERBOARD:11};
