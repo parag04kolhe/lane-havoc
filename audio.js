@@ -1,5 +1,5 @@
 /* ══════════════════════════════════════════════
-   audio.js — Road Rash Runner
+   audio.js — Lane Havoc
    Engine sounds, SFX, background/menu music,
    weather ambient audio, volume buses.
 ══════════════════════════════════════════════ */
@@ -14,8 +14,6 @@ let sfxBus=null;     // gain node for SFX sounds — coin, moo, shield, etc. (sl
 let bgBus=null;      // gain node for background music (slider 3)
 let weatherBus=null; // gain node for weather ambient sounds (slider 4)
 let almostDeadBus=null; // direct path to AC.destination — bypasses masterGain mute
-// When true, menu music will not auto-start (used when app is backgrounded)
-let suppressMenuMusic=false;
 let engineBusVol=loadLS('rr_vol_engine',1.0);
 let sfxBusVol=loadLS('rr_vol_sfx',1.0);
 let bgBusVol=loadLS('rr_vol_bg',1.0);
@@ -24,14 +22,9 @@ let _initACRunning=false; // re-entrancy guard
 function initAC(){
   if(_initACRunning)return;
   _initACRunning=true;
-  if(!AC||AC.state==='closed'){
-    try{AC=new(window.AudioContext||window.webkitAudioContext)();}catch(e){_initACRunning=false;return;}
-    masterGain=null;engineBus=null;sfxBus=null;bgBus=null;weatherBus=null;almostDeadBus=null;
-  }
+  if(!AC){try{AC=new(window.AudioContext||window.webkitAudioContext)();}catch(e){_initACRunning=false;return;}}
   // iOS suspends AudioContext aggressively — resume on every interaction
   try{if(AC.state==='suspended')AC.resume();}catch(e){}
-  // Clear any menu-music suppression when the user explicitly unlocks audio
-  try{ suppressMenuMusic=false; }catch(e){}
   if(!masterGain){
     masterGain=AC.createGain();
     masterGain.gain.value=bgMuted?0:1;
@@ -731,7 +724,7 @@ function _b64ToArrayBuffer(b64){
 }
 
 function startMenuMusic(){
-  if(!AC||menuMusicActive||suppressMenuMusic) return;
+  if(!AC||menuMusicActive)return;
   initAC();
   const mg=_masterGain();if(!mg)return;
   menuMusicActive=true;

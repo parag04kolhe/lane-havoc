@@ -4691,6 +4691,42 @@ function drawSplash(){
       ctx.restore();
     }
 
+    // ── Daily Streak Badge — top-left corner, compact pill ──
+    if(streakCount>0&&menuFadeIn>0.2){
+      const bdgX=10,bdgY=8,bdgW=82,bdgH=28;
+      ctx.save();
+      ctx.globalAlpha=menuFadeIn*0.92;
+      // Dark pill background
+      ctx.fillStyle='rgba(8,6,2,0.85)';
+      rr(bdgX,bdgY,bdgW,bdgH,8);ctx.fill();
+      ctx.strokeStyle='rgba(251,191,36,0.50)';ctx.lineWidth=1;
+      rr(bdgX,bdgY,bdgW,bdgH,8);ctx.stroke();
+      // Flame + DAY N (top line)
+      ctx.textAlign='left';ctx.textBaseline='middle';
+      ctx.font="700 9px 'Rajdhani',sans-serif";
+      ctx.fillStyle='#fbbf24';ctx.shadowColor='#f59e0b';ctx.shadowBlur=5;
+      ctx.fillText('\uD83D\uDD25 DAY '+streakCount,bdgX+6,bdgY+9);
+      ctx.shadowBlur=0;
+      // Next milestone (bottom line)
+      const _nm2=_streakNextMilestone(streakCount);
+      ctx.font="500 7px 'Rajdhani',sans-serif";
+      ctx.fillStyle='rgba(253,211,77,0.60)';
+      if(_nm2){
+        ctx.fillText('day '+_nm2.day+' \u2192 +'+_nm2.coins+'\uD83E\uDE99',bdgX+6,bdgY+20);
+      } else {
+        ctx.fillStyle='#4ade80';ctx.fillText('MAX STREAK!',bdgX+6,bdgY+20);
+      }
+      // If coins were just awarded this session, show a small toast glow
+      if(streakRewardAmount>0){
+        ctx.font="600 7px 'Rajdhani',sans-serif";
+        ctx.fillStyle='#4ade80';ctx.shadowColor='#22c55e';ctx.shadowBlur=6;
+        ctx.textAlign='right';
+        ctx.fillText('+'+streakRewardAmount,bdgX+bdgW-5,bdgY+9);
+        ctx.shadowBlur=0;
+      }
+      ctx.restore();
+    }
+
     // ── Horizon "engine idle" breath — subtle glow at the vanishing point ──
     // Pulses gently to hint that the world is still alive behind the buttons
     const idleBreath=0.06+fastSin(t*0.05)*0.04;
@@ -5219,21 +5255,47 @@ function drawIntro(){
     ctx.restore();
   }
 
-  // Mission strip
-  if(activeMission){
-    ctx.save();ctx.globalAlpha=0.85;
-    ctx.textAlign='center';ctx.textBaseline='bottom';
-    ctx.font="600 7px 'Rajdhani',sans-serif";ctx.fillStyle='#86efac';
-    const _iMTxt='✦ TODAY: '+activeMission.text+' → +'+activeMission.reward+' ';
-    const _iMTxtR=' coins';
-    const _iMW=ctx.measureText(_iMTxt).width, _iMWR=ctx.measureText(_iMTxtR).width;
-    const _iMTotalW=_iMW+8+_iMWR;
-    const _iMStartX=W/2-_iMTotalW/2;
-    ctx.textAlign='left';
-    ctx.fillText(_iMTxt,_iMStartX,CY+cardH-4);
-    _coinIco(_iMStartX+_iMW+4,CY+cardH-9,4);
-    ctx.fillText(_iMTxtR,_iMStartX+_iMW+10,CY+cardH-4);
-    ctx.textAlign='center';
+  // ── Weekly Mission Chain strip — bottom of card ──
+  {
+    const _stripY=CY+cardH-4;
+    const _stripY2=CY+cardH-18; // second line (dots row)
+    ctx.save();ctx.globalAlpha=0.88;ctx.textAlign='center';ctx.textBaseline='bottom';
+
+    if(weeklyAllDone||weeklyMissionIdx>=WEEKLY_MISSIONS.length){
+      // All 5 done this week
+      ctx.font="600 7px 'Rajdhani',sans-serif";ctx.fillStyle='#4ade80';
+      ctx.fillText('\u2606 WEEK COMPLETE! Come back Monday for new missions \u2606',W/2,_stripY);
+    } else if(activeMission){
+      // Show current mission text
+      ctx.font="600 7px 'Rajdhani',sans-serif";ctx.fillStyle='#86efac';
+      const _wTxt='\u2666 WEEK '+(weeklyMissionIdx+1)+'/5: '+activeMission.text+' \u2192 +'+activeMission.reward+' ';
+      const _wTxtR=' coins';
+      const _wW=ctx.measureText(_wTxt).width,_wWR=ctx.measureText(_wTxtR).width;
+      const _wTotal=_wW+8+_wWR,_wSX=W/2-_wTotal/2;
+      ctx.textAlign='left';
+      ctx.fillText(_wTxt,_wSX,_stripY);
+      _coinIco(_wSX+_wW+4,_stripY-5,4);
+      ctx.fillText(_wTxtR,_wSX+_wW+10,_stripY);
+    }
+
+    // Progress dots — 5 circles, filled=done, pulsing=current, hollow=future
+    const _dotR=4,_dotGap=14,_totalDotW=5*_dotGap;
+    const _dotStartX=W/2-_totalDotW/2+_dotGap/2;
+    for(let _di=0;_di<5;_di++){
+      const _dx=_dotStartX+_di*_dotGap,_dy=_stripY2-2;
+      const _isDone=_di<weeklyMissionIdx;
+      const _isCurrent=_di===weeklyMissionIdx&&!weeklyAllDone;
+      const _pulse=_isCurrent?(0.7+fastSin(frameCount*0.12)*0.3):1;
+      if(_isDone){
+        ctx.fillStyle='#fbbf24';ctx.shadowColor='#f59e0b';ctx.shadowBlur=5;
+      } else if(_isCurrent){
+        ctx.globalAlpha=0.88*_pulse;ctx.fillStyle='#86efac';ctx.shadowColor='#4ade80';ctx.shadowBlur=6;
+      } else {
+        ctx.globalAlpha=0.35;ctx.fillStyle='#475569';ctx.shadowBlur=0;
+      }
+      ctx.beginPath();ctx.arc(_dx,_dy,_isDone||_isCurrent?_dotR:_dotR-1,0,Math.PI*2);ctx.fill();
+      ctx.shadowBlur=0;ctx.globalAlpha=0.88;
+    }
     ctx.restore();
   }
 }
@@ -5570,10 +5632,41 @@ function drawGameOver(){
   ctx.font="600 10px 'Rajdhani',sans-serif";ctx.fillStyle='#94a3b8';ctx.textAlign='right';ctx.fillText('Coins Bank',W/2-4,PY+286);
   ctx.textAlign='left';_coinIco(W/2+11,PY+283,5);ctx.font="bold 10px 'Orbitron',sans-serif";ctx.fillStyle='#fbbf24';ctx.fillText(' '+coinBank,W/2+18,PY+286);
 
-  // Mission reminder
-  if(activeMission){
-    ctx.font="600 9px 'Rajdhani',sans-serif";ctx.fillStyle='#475569';ctx.textAlign='center';
-    ctx.fillText('MISSION: '+activeMission.text,W/2,PY+304);
+  // Weekly mission chain reminder + dots
+  {
+    const _goMY=PY+300;
+    ctx.save();ctx.textAlign='center';
+    if(weeklyAllDone||weeklyMissionIdx>=WEEKLY_MISSIONS.length){
+      ctx.font="600 8px 'Rajdhani',sans-serif";ctx.fillStyle='#4ade80';
+      ctx.fillText('\u2606 WEEK COMPLETE \u2606',W/2,_goMY);
+    } else if(activeMission){
+      ctx.font="600 8px 'Rajdhani',sans-serif";ctx.fillStyle='#64748b';
+      const _goTxt='MISSION '+(weeklyMissionIdx+1)+'/5: '+activeMission.text;
+      // Truncate if too wide
+      const _goMaxW=PW-24;
+      ctx.font="600 8px 'Rajdhani',sans-serif";
+      let _goFinal=_goTxt;
+      while(ctx.measureText(_goFinal).width>_goMaxW&&_goFinal.length>10)_goFinal=_goFinal.slice(0,-1);
+      if(_goFinal!==_goTxt)_goFinal=_goFinal.trim()+'…';
+      ctx.fillText(_goFinal,W/2,_goMY);
+    } else {
+      ctx.font="600 8px 'Rajdhani',sans-serif";ctx.fillStyle='#334155';
+      ctx.fillText('No active mission this week',W/2,_goMY);
+    }
+    // Progress dots
+    const _gdR=3,_gdGap=12,_gdStartX=W/2-5*_gdGap/2+_gdGap/2;
+    const _gdY=_goMY+10;
+    for(let _di=0;_di<5;_di++){
+      const _gx=_gdStartX+_di*_gdGap;
+      const _isDone=_di<weeklyMissionIdx;
+      const _isCur=_di===weeklyMissionIdx&&!weeklyAllDone;
+      ctx.fillStyle=_isDone?'#fbbf24':_isCur?'#86efac':'#1e293b';
+      ctx.shadowColor=_isDone?'#f59e0b':_isCur?'#4ade80':'transparent';
+      ctx.shadowBlur=_isDone||_isCur?4:0;
+      ctx.beginPath();ctx.arc(_gx,_gdY,_isDone||_isCur?_gdR:_gdR-1,0,Math.PI*2);ctx.fill();
+    }
+    ctx.shadowBlur=0;
+    ctx.restore();
   }
 
   // ── SHARE button ──

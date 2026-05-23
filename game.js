@@ -428,6 +428,67 @@ function saveLifetimeStats(){
   saveLS('rr_stat_misses',statTotalMisses);
   saveLS('rr_stat_coins',statTotalCoins);
 }
+
+/* ══════════════════════════════════════════════
+   DAILY STREAK SYSTEM
+   Tracks consecutive days the player opens the game.
+   Awards coins once per new day; shown as badge on splash.
+   Milestones: Day 3 → +25, Day 7 → +50, Day 14 → +75, Day 30 → +150.
+══════════════════════════════════════════════ */
+let streakCount        = loadLS('rr_streak_count', 0);
+let streakLastDate     = loadLS('rr_streak_date', '');
+let streakRewardClaimed= loadLS('rr_streak_claimed_today', false);
+let streakRewardAmount = 0; // coins awarded this session (shown in badge); 0 = already claimed
+
+(function(){
+  const _today     = new Date().toDateString();
+  const _yesterday = new Date(Date.now() - 86400000).toDateString();
+
+  if(streakLastDate === ''){
+    // First ever launch
+    streakCount = 1;
+    streakLastDate = _today;
+    streakRewardClaimed = false;
+  } else if(streakLastDate === _today){
+    // Already visited today — streak unchanged
+  } else if(streakLastDate === _yesterday){
+    // Consecutive day
+    streakCount++;
+    streakLastDate = _today;
+    streakRewardClaimed = false;
+  } else {
+    // Missed one or more days — reset
+    streakCount = 1;
+    streakLastDate = _today;
+    streakRewardClaimed = false;
+  }
+
+  // Award daily coins once per new day
+  if(!streakRewardClaimed){
+    streakRewardAmount = streakCount >= 30 ? 150
+                       : streakCount >= 14 ? 75
+                       : streakCount >=  7 ? 50
+                       : streakCount >=  3 ? 25
+                       : 10;
+    coinBank += streakRewardAmount;
+    saveLS('rr_coins2', coinBank);
+    streakRewardClaimed = true;
+  }
+
+  saveLS('rr_streak_count',         streakCount);
+  saveLS('rr_streak_date',          streakLastDate);
+  saveLS('rr_streak_claimed_today', streakRewardClaimed);
+})();
+
+// Helper used by render.js to get next milestone text
+function _streakNextMilestone(count){
+  if(count < 3)  return {day: 3,  coins: 25};
+  if(count < 7)  return {day: 7,  coins: 50};
+  if(count < 14) return {day: 14, coins: 75};
+  if(count < 30) return {day: 30, coins: 150};
+  return null; // max streak reached
+}
+
 let showStats=false; // toggle stats overlay on intro screen
 let playMode=loadLS('rr_play_mode','swipe'); // 'swipe' or 'track'
 let trackSensitivity=loadLS('rr_track_sens','low'); // 'high' or 'low' (track mode only)
@@ -557,6 +618,7 @@ let exitConfirmActive=false; // show exit-confirm overlay
 let score,frameCount,dashOff,baseSpd,spd;
 let distanceTravelled=0;
 let lastStages,stageNum,exhaustTimer,shakeAmt;
+let runNitroUsed=0; // nitro firings this run — tracked for weekly mission 5
 const DIST_PER_STAGE = 6000;
 const MAX_SPEED_STAGE = 17;
 let player,bloodPools;
@@ -1032,7 +1094,6 @@ document.addEventListener('keydown',e=>{
     if(e.key===' '||e.key==='p'||e.key==='P'){
       gamePaused=false;
       const pb=document.getElementById('pauseBtn');if(pb)pb.textContent='⏸';
-      try{ suppressMenuMusic=false; initAC(); }catch(e){}
       if(masterGain) masterGain.gain.setTargetAtTime(bgMuted?0:1, AC.currentTime, 0.08);
     }
     return;
@@ -1734,7 +1795,6 @@ if(gst===ST.GAMEOVER && isTap){
         masterGain.gain.setTargetAtTime(0, AC.currentTime, 0.05);
       } else {
         masterGain.gain.setTargetAtTime(bgMuted?0:1, AC.currentTime, 0.08);
-        try{ suppressMenuMusic=false; }catch(e){}
       }
     }
   }

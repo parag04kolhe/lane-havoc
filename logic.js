@@ -68,6 +68,7 @@ function initVars(){
   respawnFadeTimer=0;newBestCelebTimer=0;confettiParticles=[];
   runNearMisses=0;runCattleDodged=0;runMaxCombo=0;runStagesSurvived=0;
   runNitroInRain=false;runNitroRainDone=false;
+  runNitroUsed=0;
   reviveTimer=0;reviveUsed=false;
   postShieldGrace=0;
   savedFlash=0;
@@ -504,37 +505,80 @@ function spawnTruck(dt){
 }
 
 /* ══════════════════════════════════════════════
-   MISSIONS SYSTEM
+   WEEKLY MISSION CHAIN
+   5 missions per week, reset every Monday.
+   Each completed mission advances to the next.
+   Completing all 5 shows "WEEK COMPLETE" and
+   waits for Monday to reset.
 ══════════════════════════════════════════════ */
-const MISSION_DEFS=[
-  {id:'coins15',   text:'Collect 15 coins in one run',  reward:30, check:()=>sessionCoins>=15},
-  {id:'nearMiss3', text:'Get 3 near-misses in a row',   reward:20, check:()=>nearMissStreak>=3},
-  {id:'nitroRain', text:'Use nitro while it\'s raining', reward:25, check:()=>runNitroRainDone},
-  {id:'stages3',   text:'Survive 3 stages in one run',   reward:40, check:()=>runStagesSurvived>=3},
+const WEEKLY_MISSIONS=[
+  {id:'wm_coins50',  text:'Collect 50 coins in one run',  reward:25, check:()=>sessionCoins>=50},
+  {id:'wm_combo3x',  text:'Reach a ×3 combo streak',      reward:30, check:()=>runMaxCombo>=6},
+  {id:'wm_stage5',   text:'Survive to stage 5',           reward:40, check:()=>stageNum>=5},
+  {id:'wm_misses15', text:'Get 15 near-misses in one run',reward:35, check:()=>runNearMisses>=15},
+  {id:'wm_nitro4',   text:'Use nitro 4 times in one run', reward:50, check:()=>runNitroUsed>=4},
 ];
-let activeMission=null,missionCompleteFlash=0,missionCompleteText='';
-let missionProgress=0; // current progress value for display
-function loadMission(){
-  const today=new Date().toDateString();
-  const saved=loadLS('rr_mission','{}');
-  if(saved.date===today&&saved.id){
-    activeMission=MISSION_DEFS.find(m=>m.id===saved.id)||null;
-    if(saved.done) activeMission=null; // already completed today
+
+// Weekly chain state — persisted in localStorage
+let weeklyMissionIdx  = loadLS('rr_weekly_mission_idx',  0);
+let weeklyResetDate   = loadLS('rr_weekly_reset_date',   '');
+let weeklyAllDone     = loadLS('rr_weekly_all_done',     false);
+
+// activeMission, missionCompleteFlash, missionCompleteText — keep original names for render.js compat
+let activeMission=null, missionCompleteFlash=0, missionCompleteText='';
+let missionProgress=0; // kept for backwards compat; not actively used
+
+/* Returns the ISO date string of the most recent Monday */
+function _getMondayDateString(){
+  const d=new Date();
+  const day=d.getDay(); // 0=Sun…6=Sat
+  const diff=(day===0)?6:(day-1);
+  d.setDate(d.getDate()-diff);
+  d.setHours(0,0,0,0);
+  return d.toDateString();
+}
+
+function loadWeeklyMission(){
+  const monday=_getMondayDateString();
+  if(weeklyResetDate!==monday){
+    // New week — reset chain
+    weeklyMissionIdx=0;
+    weeklyResetDate=monday;
+    weeklyAllDone=false;
+    saveLS('rr_weekly_mission_idx', 0);
+    saveLS('rr_weekly_reset_date',  monday);
+    saveLS('rr_weekly_all_done',    false);
+  }
+  // Set activeMission to current chain position
+  if(weeklyAllDone||weeklyMissionIdx>=WEEKLY_MISSIONS.length){
+    activeMission=null;
   } else {
-    const idx=Math.floor(Math.random()*MISSION_DEFS.length);
-    activeMission=MISSION_DEFS[idx];
-    saveLS('rr_mission',{date:today,id:activeMission.id,done:false});
+    activeMission=WEEKLY_MISSIONS[weeklyMissionIdx];
   }
 }
+
 function checkMission(){
   if(!activeMission)return;
   if(activeMission.check()){
-    const today=new Date().toDateString();
-    saveLS('rr_mission',{date:today,id:activeMission.id,done:true});
-    coinBank+=activeMission.reward;saveLS('rr_coins2',coinBank);cvalEl.textContent=coinBank;
-    missionCompleteText='MISSION DONE! +'+activeMission.reward+' COINS';
+    const _reward=activeMission.reward;
+    coinBank+=_reward;
+    saveLS('rr_coins2',coinBank);
+    cvalEl.textContent=coinBank;
+
+    weeklyMissionIdx++;
+    saveLS('rr_weekly_mission_idx', weeklyMissionIdx);
+
+    if(weeklyMissionIdx>=WEEKLY_MISSIONS.length){
+      // All 5 done this week
+      weeklyAllDone=true;
+      saveLS('rr_weekly_all_done', true);
+      missionCompleteText='WEEK COMPLETE! +'+_reward+' COINS 🎉';
+      activeMission=null;
+    } else {
+      missionCompleteText='MISSION DONE! +'+_reward+' COINS';
+      activeMission=WEEKLY_MISSIONS[weeklyMissionIdx];
+    }
     missionCompleteFlash=240;
-    activeMission=null;
     snd('missionComplete');haptic([30,20,60,20,30]);
   }
 }
@@ -578,74 +622,7 @@ function _doShareRunSummary(){
     _tryShare(null);
   }
 }
-loadMission();
-
-// Auto-pause when the page/tab or app loses focus (mobile app switch, call, background)
-(function(){
-  function doAutoPause(){
-    try{
-      // Always stop/quiet audio when page is backgrounded (menu or gameplay)
-      if(typeof AC!=='undefined' && AC && AC.state==='running'){
-        try{ AC.suspend(); }catch(e){}
-      }
-      try{ if(typeof stopMenuMusic==='function') stopMenuMusic(); }catch(e){}
-      try{ if(typeof stopBgMusic==='function') stopBgMusic(); }catch(e){}
-      try{ if(typeof masterGain!=='undefined' && masterGain && masterGain.gain) masterGain.gain.setTargetAtTime(0, (AC&&AC.currentTime)||0, 0.05); }catch(e){}
-      try{ if(typeof bgBus!=='undefined' && bgBus && bgBus.gain) bgBus.gain.setTargetAtTime(0, (AC&&AC.currentTime)||0, 0.05); }catch(e){}
-      try{ if(typeof engineBus!=='undefined' && engineBus && engineBus.gain) engineBus.gain.setTargetAtTime(0, (AC&&AC.currentTime)||0, 0.05); }catch(e){}
-      try{ if(typeof sfxBus!=='undefined' && sfxBus && sfxBus.gain) sfxBus.gain.setTargetAtTime(0, (AC&&AC.currentTime)||0, 0.05); }catch(e){}
-      try{ if(typeof weatherBus!=='undefined' && weatherBus && weatherBus.gain) weatherBus.gain.setTargetAtTime(0, (AC&&AC.currentTime)||0, 0.05); }catch(e){}
-      // Prevent menu music from auto-starting while suppressed
-      try{ if(typeof suppressMenuMusic!=='undefined') suppressMenuMusic=true; }catch(e){}
-      // If we were in gameplay, also set the gamePaused flag so gameplay stops
-      if(typeof gst!=='undefined' && (gst===ST.PLAYING || gst===ST.RESPAWNING)){
-        gamePaused=true; const pb=document.getElementById('pauseBtn'); if(pb) pb.textContent='▶';
-      }
-    }catch(e){}
-  }
-
-  function resumeAudioAndMusic(){
-    try{
-      const now=(AC&&AC.currentTime)||0;
-      // Restore masterGain and all bus gains that were zeroed on pause
-      try{ if(typeof masterGain!=='undefined' && masterGain && masterGain.gain) masterGain.gain.setTargetAtTime(bgMuted?0:1, now, 0.08); }catch(e){}
-      try{ if(typeof engineBus!=='undefined' && engineBus && engineBus.gain) engineBus.gain.setTargetAtTime(typeof engineBusVol!=='undefined'?engineBusVol:1, now, 0.08); }catch(e){}
-      try{ if(typeof sfxBus!=='undefined' && sfxBus && sfxBus.gain) sfxBus.gain.setTargetAtTime(typeof sfxBusVol!=='undefined'?sfxBusVol:1, now, 0.08); }catch(e){}
-      try{ if(typeof bgBus!=='undefined' && bgBus && bgBus.gain) bgBus.gain.setTargetAtTime(typeof bgBusVol!=='undefined'?bgBusVol:1, now, 0.08); }catch(e){}
-      try{ if(typeof weatherBus!=='undefined' && weatherBus && weatherBus.gain) weatherBus.gain.setTargetAtTime(typeof weatherBusVol!=='undefined'?weatherBusVol:1, now, 0.08); }catch(e){}
-      if(typeof gst!=='undefined'){
-        if(gst===ST.SPLASH||gst===ST.INTRO||gst===ST.HOWTO||gst===ST.STATS||gst===ST.SHOP||gst===ST.GAMEOVER){
-          if(typeof startMenuMusic==='function') startMenuMusic();
-        } else if(gst===ST.PLAYING || gst===ST.RESPAWNING){
-          if(typeof updateMusicForTheme==='function') updateMusicForTheme();
-        }
-      }
-    }catch(e){}
-  }
-
-  function doAutoResume(){
-    try{
-      try{ if(typeof suppressMenuMusic!=='undefined') suppressMenuMusic=false; }catch(e){}
-      try{ if(typeof initAC==='function') initAC(); }catch(e){}
-      if(typeof AC!=='undefined' && AC && AC.state==='suspended'){
-        try{
-          AC.resume().then(resumeAudioAndMusic).catch(resumeAudioAndMusic);
-          return;
-        }catch(e){}
-      }
-      resumeAudioAndMusic();
-    }catch(e){}
-  }
-
-  // Page lifecycle: hide/blur/pagehide — best-effort coverage for mobile app switch and lock
-  document.addEventListener('visibilitychange', function(){ if(document.hidden) doAutoPause(); else doAutoResume(); });
-  window.addEventListener('blur', doAutoPause);
-  window.addEventListener('focus', doAutoResume);
-  window.addEventListener('pagehide', doAutoPause);
-  window.addEventListener('pageshow', doAutoResume);
-  // Some browsers support 'freeze' for page lifecycle — treat it the same as hidden
-  document.addEventListener('freeze', doAutoPause);
-})();
+loadWeeklyMission();
 
 
 /* ══════════════════════════════════════════════
@@ -1104,6 +1081,7 @@ function _fireNitro(){
   exhaustTimer = _final;
   nitroReserve = false;
   nitroExpiryTimer = 0;
+  runNitroUsed++; // track for weekly mission 5
   snd('nitroOn');
   if(weatherType==='rain'&&!runNitroRainDone){runNitroInRain=true;runNitroRainDone=true;checkMission();}
   _updateNitroBtn();
