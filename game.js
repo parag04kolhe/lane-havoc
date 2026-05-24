@@ -537,7 +537,7 @@ let showStats=false; // toggle stats overlay on intro screen
 let playMode=loadLS('rr_play_mode','track'); // 'swipe' or 'track'
 let trackSensitivity=loadLS('rr_track_sens','high'); // 'high' or 'low' (track mode only)
 let _mode2TutShown=loadLS('rr_tut2_shown',false); // mode 2 first-run hints shown
-const _trackSensPopup=false; // sensitivity popup removed — high sensitivity is the fixed default
+let _trackSensPopup=false; // sensitivity popup removed — high sensitivity is the fixed default
 function getSkin() {return SKINS.find(s=>s.id===equippedSkin)||SKINS[0];}
 function getTrail(){return TRAILS.find(t=>t.id===equippedTrail)||TRAILS[0];}
 
