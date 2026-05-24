@@ -5824,7 +5824,7 @@ function drawGameOver(){
   ctx.strokeStyle='rgba(255,255,255,0.06)';ctx.lineWidth=1;
   ctx.beginPath();ctx.moveTo(PX+16,PY+90);ctx.lineTo(PX+PW-16,PY+90);ctx.stroke();
 
-  // ── Global Rank (fetched async right after game over) ──
+  // ── Global Rank (always based on personal best — never regresses after a bad run) ──
   if(lbRankLoading||lbMyEstimatedRank>0){
     ctx.save();ctx.textAlign='center';ctx.textBaseline='middle';
     ctx.font="bold 9px 'Orbitron',sans-serif";
@@ -5833,13 +5833,17 @@ function drawGameOver(){
       const _rankPulse=0.45+Math.sin(frameCount*0.12)*0.45;
       ctx.globalAlpha=_rankPulse;
       ctx.fillStyle='#64748b';
-      ctx.fillText('\uD83C\uDF0D RANKING...',W/2,PY+100);
+      ctx.fillText('\uD83C\uDF0D RANKING...',W/2,PY+97);
     }else{
       const _isTop10=lbMyEstimatedRank<=10;
       if(_isTop10){ctx.shadowColor='#fbbf24';ctx.shadowBlur=14;}
       ctx.fillStyle=_isTop10?'#fbbf24':'#22d3ee';
-      ctx.fillText('\uD83C\uDF0D GLOBAL RANK: #'+lbMyEstimatedRank,W/2,PY+100);
+      ctx.fillText('\uD83C\uDF0D BEST RANK: #'+lbMyEstimatedRank,W/2,PY+97);
       ctx.shadowBlur=0;
+      // Sub-label — small muted text so player understands it reflects their best score
+      ctx.font="500 7px 'Rajdhani',sans-serif";
+      ctx.fillStyle='rgba(148,163,184,0.55)';
+      ctx.fillText('based on your personal best',W/2,PY+108);
     }
     ctx.restore();
   }

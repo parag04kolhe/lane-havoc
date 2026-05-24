@@ -555,6 +555,7 @@ const _SB_HDR = {
 
 let playerName      = loadLS('rr_player_name',''); // saved display name
 let _llPendingScore = 0;                           // score waiting for name entry
+let playerBestScore = loadLS('rr_pb_score', 0);    // personal best score — persists across sessions
 
 // Leaderboard screen state
 let lbScores      = [];  // [{rank, score, name}]
@@ -579,8 +580,8 @@ async function _llFetchScores(){
   }catch(e){console.error('[SB] fetch error:',e);return[];}
 }
 
-// Insert a new score row
-async function _llSubmit(name,score){
+// Insert a new score row — only called when finalScore beats the stored personal best
+async function _llSubmit(name, score){
   try{
     const r=await fetch(_SB_URL+'/rest/v1/scores',{
       method :'POST',
@@ -588,27 +589,46 @@ async function _llSubmit(name,score){
       body   :JSON.stringify({name, score})
     });
     console.log('[SB] submit status:',r.status);
+    // Update local personal best only after a confirmed submit
+    if(r.ok||r.status===201){
+      playerBestScore=score;
+      saveLS('rr_pb_score', playerBestScore);
+    }
   }catch(e){console.error('[SB] submit error:',e);}
 }
 
 // Called automatically on every game over
 async function _llHandleGameOver(finalScore){
   if(finalScore<=0)return;
-  // Reset rank state — will show "RANKING..." until fetch completes
+
+  // ── Determine the score to rank against ──────────────────────────────
+  // Always rank against the player's personal best, not just this run.
+  // If this run is a new personal best, it becomes the reference immediately.
+  const _rankScore = Math.max(finalScore, playerBestScore);
+  const _isNewBest = finalScore > playerBestScore;
+
+  // Reset rank display state — shows "RANKING..." until fetch completes
   lbMyEstimatedRank=0;
   lbRankLoading=true;
-  if(playerName){
-    await _llSubmit(playerName, finalScore);
-  }else{
-    _llPendingScore=finalScore;
-    const overlay=document.getElementById('nameOverlay');
-    if(overlay)overlay.style.display='flex';
+
+  // ── Submit to Supabase only when this run beats the personal best ─────
+  // Bad runs are silently skipped — no junk rows accumulate in the database.
+  if(_isNewBest){
+    if(playerName){
+      await _llSubmit(playerName, finalScore);
+    }else{
+      _llPendingScore=finalScore;
+      const overlay=document.getElementById('nameOverlay');
+      if(overlay)overlay.style.display='flex';
+    }
   }
-  // Fetch leaderboard to compute estimated global rank
+
+  // ── Fetch leaderboard and calculate rank from personal best ───────────
+  // Count how many entries in the database beat _rankScore; +1 = our rank.
+  // This means a bad run never shows a worse rank than the player's best ever.
   try{
     const _scores=await _llFetchScores();
-    // Count entries with a higher score than ours; +1 gives our rank position
-    lbMyEstimatedRank=_scores.filter(s=>s.score>finalScore).length+1;
+    lbMyEstimatedRank=_scores.filter(s=>s.score>_rankScore).length+1;
   }catch(e){ lbMyEstimatedRank=0; }
   lbRankLoading=false;
 }
@@ -619,7 +639,11 @@ async function _llSubmitWithName(name,score){
   saveLS('rr_player_name',playerName);
   const overlay=document.getElementById('nameOverlay');
   if(overlay)overlay.style.display='none';
-  await _llSubmit(name, score);
+  // Only send to Supabase if this score is still a personal best
+  // (player may have entered name on a bad run that arrived via the overlay)
+  if(score>playerBestScore){
+    await _llSubmit(name, score);
+  }
 }
 
 // Open the leaderboard screen and fetch scores
