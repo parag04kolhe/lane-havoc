@@ -563,6 +563,8 @@ let lbError       = '';
 let lbMyRank      = 0;
 let lbScrollY     = 0;   // scroll offset for leaderboard list (pixels)
 let lbLastRunScore= 0;   // the player's most recent run score (shown below top 20)
+let lbMyEstimatedRank = 0;   // estimated global rank after game over (0 = no data yet)
+let lbRankLoading     = false; // true while rank fetch is in progress
 
 // Fetch top 20 scores ordered by score descending
 async function _llFetchScores(){
@@ -592,6 +594,9 @@ async function _llSubmit(name,score){
 // Called automatically on every game over
 async function _llHandleGameOver(finalScore){
   if(finalScore<=0)return;
+  // Reset rank state — will show "RANKING..." until fetch completes
+  lbMyEstimatedRank=0;
+  lbRankLoading=true;
   if(playerName){
     await _llSubmit(playerName, finalScore);
   }else{
@@ -599,6 +604,13 @@ async function _llHandleGameOver(finalScore){
     const overlay=document.getElementById('nameOverlay');
     if(overlay)overlay.style.display='flex';
   }
+  // Fetch leaderboard to compute estimated global rank
+  try{
+    const _scores=await _llFetchScores();
+    // Count entries with a higher score than ours; +1 gives our rank position
+    lbMyEstimatedRank=_scores.filter(s=>s.score>finalScore).length+1;
+  }catch(e){ lbMyEstimatedRank=0; }
+  lbRankLoading=false;
 }
 
 // Called when player submits name via overlay
@@ -648,6 +660,23 @@ async function _llOpenLeaderboard(){
   skipBtn.addEventListener('touchstart',e=>{e.preventDefault();overlay.style.display='none';},{passive:false});
   input.addEventListener('touchstart',e=>e.stopPropagation(),{passive:true});
 })();
+
+/* ══════════════════════════════════════════════
+   RUSH HOUR MODE
+   Automatically active 17:00–20:00 local time.
+   Effects (applied in logic.js):
+     • Enemy spawn rate ×1.25
+     • +1 max simultaneous enemies
+     • 2× coins per coin collected
+   Visual cue (applied in render.js):
+     • Pulsing banner on splash/intro screen
+     • Tiny HUD indicator during gameplay
+══════════════════════════════════════════════ */
+function _isRushHour(){
+  const h=new Date().getHours();
+  return h>=17&&h<20;
+}
+let rushHourActive=_isRushHour();
 
 /* ══════════════════════════════════════════════
    STATE — (ST and gst declared above, before PERF)

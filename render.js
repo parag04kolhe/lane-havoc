@@ -3212,6 +3212,8 @@ function draw(){
   drawPlayerPowerStatus();
   drawPuBanner();
   drawPerfBadge();
+  // Rush Hour HUD indicator — tiny top-centre badge during gameplay
+  _drawRushHourHUD();
   // Mode 2 first-run hints
   _drawMode2Hints();
 
@@ -3307,10 +3309,28 @@ function _drawMode2Hints(){
 
 
 
-/* ── Big sweeping green screen arrow (like attached image) ──────────────
-   dir: 'right' | 'left'
-   Sweeps continuously across the screen at 50% max opacity.
-   Shape: chunky arrow with notched tail, solid green fill. */
+/* ══════════════════════════════════════════════
+   DRAW — RUSH HOUR GAMEPLAY HUD INDICATOR
+   Tiny top-centre badge during gameplay when Rush
+   Hour is active (17:00–20:00 local time).
+   Same pulse formula as the splash banner.
+══════════════════════════════════════════════ */
+function _drawRushHourHUD(){
+  if(typeof rushHourActive==='undefined'||!rushHourActive)return;
+  if(gst!==ST.PLAYING&&gst!==ST.RESPAWNING)return;
+  const pulse=Math.sin(frameCount*0.08)*0.3+0.7;
+  ctx.save();
+  ctx.globalAlpha=pulse*0.92;
+  ctx.textAlign='center';ctx.textBaseline='middle';
+  ctx.font="bold 7px 'Orbitron',sans-serif";
+  ctx.fillStyle='#f97316';
+  ctx.shadowColor='#f97316';ctx.shadowBlur=7;
+  ctx.fillText('\u26A1 RUSH HOUR \u2014 2\u00D7 COINS',W/2,38);
+  ctx.shadowBlur=0;
+  ctx.restore();
+}
+
+
 /* ── Double-chevron directional arrows ─────────────────────────────────
    Two tall green ">>" or "<<" shapes. Small, upper-half of screen.
    Fade in → drift slightly → fade out. Never start from screen edges.  */
@@ -4793,6 +4813,30 @@ function drawSplash(){
     // ── PLAY button — slides up from below (tied to menuFadeIn) ──
     const playSlide=(1-menuFadeIn)*28; // starts 28px low, rises to resting position
 
+    // ── RUSH HOUR BANNER — shown above PLAY when 17:00–20:00 local time ──
+    if(typeof rushHourActive!=='undefined'&&rushHourActive&&menuFadeIn>0.2){
+      const _rhBF=clamp((t-150)/14,0,1);
+      if(_rhBF>0.01){
+        // Offset up further when challenge banner is also visible
+        const _rhChalOffset=(typeof challengeScore!=='undefined'&&challengeScore>0)?40:0;
+        const _rhBanW=252,_rhBanH=24,_rhBanX=W/2-_rhBanW/2;
+        const _rhBanY=pbRestY-82-_rhChalOffset+playSlide;
+        const _rhPulse=Math.sin(frameCount*0.08)*0.3+0.7;
+        ctx.save();ctx.globalAlpha=_rhBF*menuFadeIn*_rhPulse;
+        // Pill background
+        ctx.fillStyle='rgba(25,10,0,0.90)';rr(_rhBanX,_rhBanY,_rhBanW,_rhBanH,7);ctx.fill();
+        // Border glow
+        ctx.shadowColor='#f97316';ctx.shadowBlur=12;
+        ctx.strokeStyle='#f97316';ctx.lineWidth=1.4;
+        rr(_rhBanX,_rhBanY,_rhBanW,_rhBanH,7);ctx.stroke();ctx.shadowBlur=0;
+        // Text
+        ctx.font="bold 9px 'Orbitron',sans-serif";ctx.fillStyle='#f97316';
+        ctx.textAlign='center';ctx.textBaseline='middle';
+        ctx.fillText('\u26A1 RUSH HOUR \u2014 2\u00D7 COINS ACTIVE',W/2,_rhBanY+_rhBanH/2);
+        ctx.restore();
+      }
+    }
+
     // ── CHALLENGE BANNER — shown above PLAY when arriving via a challenge link ──
     // NOTE: must be after playSlide declaration to avoid TDZ ReferenceError
     if(typeof challengeScore!=='undefined' && challengeScore>0 && menuFadeIn>0.2){
@@ -5780,7 +5824,27 @@ function drawGameOver(){
   ctx.strokeStyle='rgba(255,255,255,0.06)';ctx.lineWidth=1;
   ctx.beginPath();ctx.moveTo(PX+16,PY+90);ctx.lineTo(PX+PW-16,PY+90);ctx.stroke();
 
-  // ── 4 key action stats (18px rows) ──
+  // ── Global Rank (fetched async right after game over) ──
+  if(lbRankLoading||lbMyEstimatedRank>0){
+    ctx.save();ctx.textAlign='center';ctx.textBaseline='middle';
+    ctx.font="bold 9px 'Orbitron',sans-serif";
+    if(lbRankLoading){
+      // Pulsing "RANKING..." while fetch is in progress
+      const _rankPulse=0.45+Math.sin(frameCount*0.12)*0.45;
+      ctx.globalAlpha=_rankPulse;
+      ctx.fillStyle='#64748b';
+      ctx.fillText('\uD83C\uDF0D RANKING...',W/2,PY+100);
+    }else{
+      const _isTop10=lbMyEstimatedRank<=10;
+      if(_isTop10){ctx.shadowColor='#fbbf24';ctx.shadowBlur=14;}
+      ctx.fillStyle=_isTop10?'#fbbf24':'#22d3ee';
+      ctx.fillText('\uD83C\uDF0D GLOBAL RANK: #'+lbMyEstimatedRank,W/2,PY+100);
+      ctx.shadowBlur=0;
+    }
+    ctx.restore();
+  }
+
+  // ── 4 key action stats (18px rows) — start at PY+112 to make room for rank line ──
   const stats=[
     ['Near-Misses',  runNearMisses,     '#f97316'],
     ['Best Streak',  runMaxCombo+'\u00d7','#ef4444'],
@@ -5788,7 +5852,7 @@ function drawGameOver(){
     ['Stage Reached',stageNum,          '#a78bfa'],
   ];
   stats.forEach(([k,v,c],i)=>{
-    const ry=PY+108+i*18;
+    const ry=PY+112+i*18;
     ctx.font="600 10px 'Rajdhani',sans-serif";ctx.fillStyle='#94a3b8';ctx.textAlign='right';ctx.fillText(k,W/2-4,ry);
     ctx.font="bold 10px 'Orbitron',sans-serif";ctx.fillStyle=c;ctx.textAlign='left';ctx.fillText(v,W/2+6,ry);
   });

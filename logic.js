@@ -262,9 +262,11 @@ function getStageConfig(){
   return {
     // ── Enemy ──────────────────────────────────
     // Spawn probability per frame — scaled by post-stage multiplier, hard cap 0.036
-    enemyRate:    Math.min(0.036, _eRate * _pm),
+    // Rush Hour (17:00–20:00): additional ×1.25 pressure on enemy rate
+    enemyRate:    Math.min(0.036, _eRate * _pm * ((typeof rushHourActive!=='undefined'&&rushHourActive)?1.25:1.0)),
     // Max simultaneous enemies — grows by 1 every 5 post-stages (cap 8)
-    maxEnemies:   s>20 ? Math.min(8, _eMax + Math.floor((s-20)/5)) : _eMax,
+    // Rush Hour: +1 extra max enemy (still hard-capped at 8)
+    maxEnemies:   Math.min(8, (s>20 ? Math.min(8, _eMax + Math.floor((s-20)/5)) : _eMax) + ((typeof rushHourActive!=='undefined'&&rushHourActive)?1:0)),
     // Min px gap shrinks post-stage but never below 80px (keeps game fair)
     enemyMinGap:  Math.max(80, Math.round(_eGap / _pm)),
     // Speed variation: fraction of enemies that get it, and ±range as fraction of base
@@ -1041,7 +1043,9 @@ function triggerCrash(type,cx,cy,cattleIdx){
    COLLECTION
 ══════════════════════════════════════════════ */
 function collectCoin(coin){
-  coinBank++;sessionCoins++;saveLS('rr_coins2',coinBank);cvalEl.textContent=coinBank;
+  // Rush Hour (17:00–20:00): double coin reward per coin collected
+  const _coinAmt=(typeof rushHourActive!=='undefined'&&rushHourActive)?2:1;
+  coinBank+=_coinAmt;sessionCoins+=_coinAmt;saveLS('rr_coins2',coinBank);cvalEl.textContent=coinBank;
   spawnCoinCollect(coin.x,coin.y);snd('coin');haptic(10);
 
   // Per-coin HUD pop on the coin counter + icon — fires every collect
