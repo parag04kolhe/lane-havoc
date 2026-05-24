@@ -1371,6 +1371,7 @@ function doNitroFire(){
   haptic([20,10,40]);
   if(tutPhase===4&&tutNitroWarmupActive&&!tutNitroMoveLocked){
     tutNitroMoveLocked=true;
+    tutNitroWarmupActive=false; // unlock lane switching — smash phase handles its own lock
     tutNitroArrowActive=false;
     tutNitroArrowFading=true;
   }
