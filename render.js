@@ -3528,55 +3528,54 @@ function _drawChevrons(cx, cy, dir, col){
    targetLane: 0-3 — the lane the player should drag their finger to.     */
 function _drawTrackFingerHint(targetLane){
   if(typeof window._FINGER_TAP === 'undefined') return;
-  const lx  = LANE_XS[targetLane];
-  const cy  = Math.round(H * 0.42);
-  const sz  = 54;                             // finger image draw size
 
-  // Pulse: scale 0.88 → 1.12, period 50 frames
-  const pulse = 0.88 + 0.24 * Math.abs(Math.sin(frameCount * 0.13));
-  const ds    = sz * pulse;
+  const fromX = player.visualX;           // current car X (animated)
+  const toX   = LANE_XS[targetLane];      // destination lane X
+  const sz    = 90;                        // finger image size (px)
+  const cy    = Math.round(H * 0.40);     // vertical centre of finger
 
-  // Fade-in alpha (0 → 1 over 20 frames, then hold at 1)
-  const alpha = clamp(frameCount / 20, 0, 1);
+  // ── Slide cycle: 0→1 every 80 frames ──
+  const cycle  = 80;
+  const t      = (frameCount % cycle) / cycle;
+
+  // Ease-in-out so it feels natural, not robotic
+  const eased  = t < 0.5 ? 2*t*t : -1 + (4 - 2*t)*t;
+
+  // Fade envelope: in 0–12%, hold 12–82%, out 82–100%
+  let alpha;
+  if(t < 0.12)      alpha = t / 0.12;
+  else if(t < 0.82) alpha = 1.0;
+  else              alpha = (1.0 - t) / 0.18;
+  alpha = clamp(alpha, 0, 1);
+  if(alpha < 0.02) return;
+
+  const fingerX = fromX + (toX - fromX) * eased;
+  const trailDir = (toX >= fromX) ? -1 : 1;   // trail behind movement
 
   ctx.save();
 
-  // ── Lane glow column ──
-  const gAlpha = 0.10 + 0.06 * Math.abs(Math.sin(frameCount * 0.09));
-  ctx.globalAlpha = gAlpha;
+  // ── Target lane highlight ──
+  const gA = 0.09 + 0.05 * Math.abs(fastSin(frameCount * 0.09));
+  ctx.globalAlpha = gA;
   ctx.fillStyle   = '#00e676';
-  ctx.fillRect(lx - 35, 0, 70, H);
+  ctx.fillRect(LANE_XS[targetLane] - 35, 0, 70, H);
 
-  // ── Outer pulse ring ──
-  ctx.globalAlpha = alpha * (0.30 + 0.25 * Math.abs(Math.sin(frameCount * 0.13)));
-  ctx.strokeStyle = '#00e676';
-  ctx.lineWidth   = 2.5;
-  ctx.shadowColor = '#00e676';
-  ctx.shadowBlur  = 18;
-  ctx.beginPath();
-  ctx.arc(lx, cy + ds * 0.15, ds * 0.68, 0, Math.PI * 2);
-  ctx.stroke();
-  ctx.shadowBlur  = 0;
+  // ── Motion trail — 2 fading dots behind the finger ──
+  [[0.30, 20], [0.13, 38]].forEach(([a, off]) => {
+    ctx.globalAlpha = alpha * a;
+    ctx.fillStyle   = '#00e676';
+    ctx.shadowColor = '#00e676'; ctx.shadowBlur = 10;
+    ctx.beginPath();
+    ctx.arc(fingerX + trailDir * off, cy + sz * 0.12, 7, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.shadowBlur = 0;
+  });
 
   // ── Finger image ──
   ctx.globalAlpha = alpha;
   if(window._FINGER_TAP.complete && window._FINGER_TAP.naturalWidth > 0){
-    ctx.drawImage(window._FINGER_TAP, lx - ds/2, cy - ds/2, ds, ds);
+    ctx.drawImage(window._FINGER_TAP, fingerX - sz/2, cy - sz/2, sz, sz);
   }
-
-  // ── Instruction pill ──
-  ctx.globalAlpha = alpha * 0.95;
-  const pillW = 210, pillH = 30;
-  const pillX = W / 2 - pillW / 2, pillY = cy + ds * 0.65;
-  ctx.fillStyle = 'rgba(5,7,20,0.88)';
-  rr(pillX, pillY, pillW, pillH, 10); ctx.fill();
-  ctx.strokeStyle = '#00e676'; ctx.lineWidth = 1.5;
-  ctx.shadowColor = '#00e676'; ctx.shadowBlur = 12;
-  rr(pillX, pillY, pillW, pillH, 10); ctx.stroke(); ctx.shadowBlur = 0;
-  ctx.fillStyle = '#bbf7d0';
-  ctx.font = "bold 8.5px 'Orbitron',sans-serif";
-  ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-  ctx.fillText('DRAG FINGER TO SWITCH LANES', W / 2, pillY + pillH / 2);
 
   ctx.restore();
 }
