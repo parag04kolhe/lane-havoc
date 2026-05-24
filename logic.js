@@ -99,8 +99,8 @@ function reset(){
   gamePaused=false;exitConfirmActive=false;
   const pb=document.getElementById('pauseBtn');if(pb)pb.textContent='⏸';
   initVars();gst=ST.PLAYING;
-  // Activate guided tutorial on first-ever run — skipped in Finger Track mode
-  if(!tutorialShown.fullTutorial && playMode!=='track'){ tutPhase=0; }
+  // Activate guided tutorial on first-ever run — for both swipe and track modes
+  if(!tutorialShown.fullTutorial){ tutPhase=0; }
   _updateDistBoxVisibility(); // hide distance HUD during tutorial, show normally
   if(equippedBoost==='shield_start')activeShield=true;
   if(equippedBoost==='extra_life')player.lives=2;
@@ -2142,6 +2142,7 @@ function update(dt){
         tutPhase=-1;tutSpeedTarget=1.0;tutSpeedCurrent=1.0;
         _nitroTutDone=true;_saveNitroTutDone();
         tutorialShown.fullTutorial=true;_saveTutShown();
+        _mode2TutShown=true;saveLS('rr_tut2_shown',true); // full tutorial replaces mode2 hints
         distanceTravelled=0;_updateDistBoxVisibility();
         clearStretchTimer=180;
         // Restore cannon balls from Phase 3 — fire button active at Stage 1 start

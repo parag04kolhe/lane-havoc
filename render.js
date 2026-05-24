@@ -3517,6 +3517,73 @@ function _drawChevrons(cx, cy, dir, col){
   ctx.restore();
 }
 
+/* ── Track mode steering hint ───────────────────────────────────────────
+   Animated finger icon sliding across lanes — shown in Phase 1 for track
+   mode players instead of the swipe arrow. dir: 'right' | 'left'. */
+function _drawTrackSteerHint(dir){
+  const cycle = 84;
+  const t = (frameCount % cycle) / cycle; // 0 → 1 continuously
+
+  // Fade: quick in, hold, quick out
+  let fEnv;
+  if(t < 0.14)      fEnv = t / 0.14;
+  else if(t < 0.78) fEnv = 1.0;
+  else              fEnv = (1.0 - t) / 0.22;
+  if(fEnv < 0.02) return;
+
+  const isRight = dir !== 'left';
+  // Slide finger from lane 1 area toward lane 3 (right) or vice versa
+  const fromX = LANE_XS[isRight ? 1 : 2];
+  const toX   = LANE_XS[isRight ? 3 : 0];
+  const prog  = clamp(t / 0.78, 0, 1); // normalised 0→1 across the hold window
+  const fingerX = fromX + (toX - fromX) * prog;
+  const fingerY = Math.round(H * 0.40);
+
+  ctx.save();
+
+  // Motion trail — 3 ghost circles behind the finger
+  const trailDir = isRight ? -1 : 1;
+  [[0.36, 22], [0.16, 40], [0.07, 56]].forEach(([a, off]) => {
+    ctx.globalAlpha = fEnv * a;
+    ctx.fillStyle = '#38bdf8';
+    ctx.beginPath();
+    ctx.arc(fingerX + trailDir * off, fingerY + 14, 10, 0, Math.PI * 2);
+    ctx.fill();
+  });
+
+  ctx.globalAlpha = fEnv;
+
+  // Palm circle
+  ctx.fillStyle = 'rgba(255,255,255,0.93)';
+  ctx.shadowColor = '#38bdf8'; ctx.shadowBlur = 18;
+  ctx.beginPath(); ctx.arc(fingerX, fingerY + 14, 14, 0, Math.PI * 2); ctx.fill();
+  ctx.shadowBlur = 0;
+
+  // Four finger rectangles above palm
+  ctx.fillStyle = 'rgba(255,255,255,0.93)';
+  for(let fi = 0; fi < 4; fi++){
+    const fx = fingerX - 10 + fi * 7;
+    rr(fx, fingerY - 10, 5, 14, 2); ctx.fill();
+  }
+
+  ctx.restore();
+
+  // Instruction pill below the hand
+  const pillW = 214, pillH = 32;
+  const pillX = W / 2 - pillW / 2, pillY = fingerY + 38;
+  ctx.save(); ctx.globalAlpha = fEnv * 0.95;
+  ctx.fillStyle = 'rgba(5,7,20,0.88)';
+  rr(pillX, pillY, pillW, pillH, 10); ctx.fill();
+  ctx.strokeStyle = '#38bdf8'; ctx.lineWidth = 1.5;
+  ctx.shadowColor = '#38bdf8'; ctx.shadowBlur = 12;
+  rr(pillX, pillY, pillW, pillH, 10); ctx.stroke(); ctx.shadowBlur = 0;
+  ctx.fillStyle = '#e0f2fe';
+  ctx.font = "bold 8.5px 'Orbitron',sans-serif";
+  ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  ctx.fillText('DRAG FINGER TO SWITCH LANES', W / 2, pillY + pillH / 2);
+  ctx.restore();
+}
+
 function drawTutorialPhase(){
   if(tutPhase<1||tutPhase>5) return;
   if(gst!==ST.PLAYING&&gst!==ST.RESPAWNING&&gst!==ST.CRASHING) return;
@@ -3602,7 +3669,8 @@ function drawTutorialPhase(){
         _laneGlow([2,3], '#00e676');
         if(_e1Vis) _dangerRing(tutEnemyRef.lane, tutEnemyRef.y);
         if(_e0Vis) _dangerRing(tutPhase1EnemyRef2.lane, tutPhase1EnemyRef2.y);
-        _drawBigScreenArrow('right');
+        if(playMode==='track') _drawTrackSteerHint('right');
+        else _drawBigScreenArrow('right');
       }
     }
     _crashPopup();
@@ -3635,7 +3703,8 @@ function drawTutorialPhase(){
           const _oRef = player.lane===1 ? tutObstRef : tutJumpObstRef2;
           if(_oRef && _oRef._active && _oRef.y >= SHOW_Y){
             _drawUpArrowOnObst(_oRef);
-            _topBanner('Swipe ↑ to jump', '#bbf7d0', '#4ade80');
+            if(playMode==='track') _topBanner('Double-tap or Swipe ↑ to jump', '#bbf7d0', '#4ade80');
+            else _topBanner('Swipe ↑ to jump', '#bbf7d0', '#4ade80');
           }
         }
       }

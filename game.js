@@ -1655,8 +1655,9 @@ if(gst===ST.GAMEOVER && isTap){
 
   // In-game controls
   if(playMode==='track'){
-    // Track mode: lift finger → clear active lane. Movement handled via touchmove+update().
-    _ftActiveLane=-1;
+    // Track mode: swipe up = jump; all other finger lifts clear active lane
+    if(Math.abs(gdy)>Math.abs(gdx) && gdy < -SWIPE) doJump();
+    else _ftActiveLane=-1;
   } else {
     // Swipe mode controls
     if(Math.abs(gdy)>Math.abs(gdx) && gdy < -SWIPE) doJump();
