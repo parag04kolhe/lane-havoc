@@ -534,10 +534,10 @@ function saveLifetimeStats(){
 }
 
 let showStats=false; // toggle stats overlay on intro screen
-let playMode=loadLS('rr_play_mode','swipe'); // 'swipe' or 'track'
-let trackSensitivity=loadLS('rr_track_sens','low'); // 'high' or 'low' (track mode only)
+let playMode=loadLS('rr_play_mode','track'); // 'swipe' or 'track'
+let trackSensitivity=loadLS('rr_track_sens','high'); // 'high' or 'low' (track mode only)
 let _mode2TutShown=loadLS('rr_tut2_shown',false); // mode 2 first-run hints shown
-let _trackSensPopup=false; // sensitivity callout popup visible on splash
+const _trackSensPopup=false; // sensitivity popup removed — high sensitivity is the fixed default
 function getSkin() {return SKINS.find(s=>s.id===equippedSkin)||SKINS[0];}
 function getTrail(){return TRAILS.find(t=>t.id===equippedTrail)||TRAILS[0];}
 
@@ -1254,18 +1254,13 @@ canvas.addEventListener('mousedown', e=>{
     const b=_splashMenuBtns;
     const hit=(r)=>r&&relX>=r.x&&relX<=r.x+r.w&&relY>=r.y&&relY<=r.y+r.h;
     if(showStats){showStats=false;return;}
-    if(_trackSensPopup){
-      if(b.sensHigh&&hit(b.sensHigh)){trackSensitivity='high';saveLS('rr_track_sens','high');_trackSensPopup=false;snd('switch');return;}
-      if(b.sensLow &&hit(b.sensLow)) {trackSensitivity='low'; saveLS('rr_track_sens','low'); _trackSensPopup=false;snd('switch');return;}
-      _trackSensPopup=false; // tap outside popup dismisses it
-    }
     if(hit(b.play))      { showStats=false;reset();return; }
     if(hit(b.guide))     { initAC();gst=ST.INTRO;return; }
     if(hit(b.stats))     { initAC();gst=ST.STATS;return; }
     if(hit(b.shop))      { doShop();return; }
     if(hit(b.howto))     { initAC();gst=ST.HOWTO;return; }
-    if(hit(b.modeSwipe)){playMode='swipe';saveLS('rr_play_mode','swipe');_trackSensPopup=false;snd('switch');return;}
-    if(hit(b.modeTrack)){playMode='track';saveLS('rr_play_mode','track');_trackSensPopup=!_trackSensPopup;snd('switch');return;}
+    if(hit(b.modeSwipe)){playMode='swipe';saveLS('rr_play_mode','swipe');snd('switch');return;}
+    if(hit(b.modeTrack)){playMode='track';saveLS('rr_play_mode','track');snd('switch');return;}
     return;
   }
 
@@ -1531,18 +1526,13 @@ canvas.addEventListener('touchend', e=>{
       if(showStats){
         showStats=false;e.stopPropagation();return;
       }
-      if(_trackSensPopup){
-        if(b.sensHigh&&hit(b.sensHigh)){trackSensitivity='high';saveLS('rr_track_sens','high');_trackSensPopup=false;snd('switch');e.stopPropagation();return;}
-        if(b.sensLow &&hit(b.sensLow)) {trackSensitivity='low'; saveLS('rr_track_sens','low'); _trackSensPopup=false;snd('switch');e.stopPropagation();return;}
-        _trackSensPopup=false; // tap outside dismisses
-      }
       if(hit(b.play))      { showStats=false;reset();e.stopPropagation();return; }
       if(hit(b.guide))     { initAC();gst=ST.INTRO;e.stopPropagation();return; }
       if(hit(b.stats))     { initAC();gst=ST.STATS;e.stopPropagation();return; }
       if(hit(b.shop))      { doShop();e.stopPropagation();return; }
       if(hit(b.howto))     { initAC();gst=ST.HOWTO;e.stopPropagation();return; }
-      if(hit(b.modeSwipe)){playMode='swipe';saveLS('rr_play_mode','swipe');_trackSensPopup=false;snd('switch');e.stopPropagation();return;}
-      if(hit(b.modeTrack)){playMode='track';saveLS('rr_play_mode','track');_trackSensPopup=!_trackSensPopup;snd('switch');e.stopPropagation();return;}
+      if(hit(b.modeSwipe)){playMode='swipe';saveLS('rr_play_mode','swipe');snd('switch');e.stopPropagation();return;}
+      if(hit(b.modeTrack)){playMode='track';saveLS('rr_play_mode','track');snd('switch');e.stopPropagation();return;}
       e.stopPropagation();return;
     }
     // ── INTRO-only button hit detection ──
