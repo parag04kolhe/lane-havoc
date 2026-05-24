@@ -579,18 +579,16 @@ function _doShareRunSummary(){
   const km          = (distanceTravelled/15120*2.4).toFixed(2);
   const cm          = runMaxCombo>=10?4:runMaxCombo>=6?3:runMaxCombo>=3?2:1;
 
-  // Challenge link — every share becomes a live challenge
+  // Share link — just the base game URL
   const _baseURL = (function(){
     try{ return window.location.origin + window.location.pathname; }catch(e){ return 'https://lanehavoc.app/'; }
   })();
-  const _pName = (typeof playerName!=='undefined'&&playerName)?playerName:'Me';
-  const _challengeURL = _baseURL+'?challenge='+_finalScore+'&name='+encodeURIComponent(_pName.substring(0,16));
 
   const shareText =
     '\uD83C\uDFCE\uFE0F Lane Havoc \u2014 My Run!\n'+
     '\uD83D\uDCCA Score: '+_finalScore+'  |  Stage: '+stageNum+'\n'+
     '\uD83D\uDCCF '+km+' km  |  \uD83D\uDD25 '+runMaxCombo+'\u00D7 streak  |  \uD83E\uDE99 +'+sessionCoins+'\n\n'+
-    '\u26A1 Can you beat me? '+_challengeURL;
+    '\uD83C\uDFAE Play Lane Havoc: '+_baseURL;
 
   /* ─────────────────────────────────────────────────────────────
      SHARE CAR IMAGE — high-quality PNG embedded at build time
