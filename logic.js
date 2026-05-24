@@ -583,7 +583,10 @@ function _doShareRunSummary(){
   const _baseURL = 'https://parag04kolhe.github.io/lane-havoc/';
 
   const shareText =
-    '\u26A1 Can you beat me? '+_baseURL;
+    '\uD83C\uDFCE\uFE0F Lane Havoc \u2014 My Run!\n'+
+    '\uD83D\uDCCA Score: '+_finalScore+'  |  Stage: '+stageNum+'\n'+
+    '\uD83D\uDCCF '+km+' km  |  \uD83D\uDD25 '+runMaxCombo+'\u00D7 streak  |  \uD83E\uDE99 +'+sessionCoins+'\n\n'+
+    '\uD83C\uDFAE Play Lane Havoc: '+_baseURL;
 
   /* ─────────────────────────────────────────────────────────────
      SHARE CAR IMAGE — high-quality PNG embedded at build time
