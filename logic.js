@@ -690,7 +690,7 @@ function _doShareRunSummary(){
     cardCtx.fillText('Lane Havoc  \u2022  CAN YOU BEAT THIS?',CW/2,divY+14);
 
     cardCtx.restore(); // end scale
-  }  }
+  }
 
   // Rounded rect helper for off-screen context
   function _rrC(c,x,y,w,h,r){
