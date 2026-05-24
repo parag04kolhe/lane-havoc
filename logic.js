@@ -1599,7 +1599,7 @@ function update(dt){
   if(playMode==='track'&&_ftActiveLane!==-1){
     if(trackSensitivity==='high'){
       // HIGH: direct lane set each frame — ~1-frame lag (~16ms), any distance
-      if(!tutNitroMoveLocked&&!tutRewindActive&&player.lane!==_ftActiveLane){
+      if(!tutNitroMoveLocked&&!tutNitroWarmupActive&&!tutRewindActive&&player.lane!==_ftActiveLane){
         const _mxLane=weatherType==='roadworks'?2:3;
         const _tgt=Math.min(_ftActiveLane,_mxLane);
         if(player.lane!==_tgt){player.lane=_tgt;snd('switch');haptic(18);}
@@ -2526,7 +2526,7 @@ function doGunFire(){
 function doLeft(){
   if(gst===ST.SHOP){const it=SHOP_DATA[shopTab];shopIdx=(shopIdx-1+it.length)%it.length;snd('switch');return;}
   if(gst!==ST.PLAYING&&gst!==ST.RESPAWNING)return;
-  if(tutNitroMoveLocked)return; // movement locked during tutorial nitro smash
+  if(tutNitroMoveLocked||tutNitroWarmupActive)return; // locked during nitro tap-wait and smash
   if(tutRewindActive)return;    // no input during rewind
   if(player.lane>0){
     const _oldLane=player.lane; // capture BEFORE decrement
@@ -2544,7 +2544,7 @@ function doLeft(){
 function doRight(){
   if(gst===ST.SHOP){const it=SHOP_DATA[shopTab];shopIdx=(shopIdx+1)%it.length;snd('switch');return;}
   if(gst!==ST.PLAYING&&gst!==ST.RESPAWNING)return;
-  if(tutNitroMoveLocked)return; // movement locked during tutorial nitro smash
+  if(tutNitroMoveLocked||tutNitroWarmupActive)return; // locked during nitro tap-wait and smash
   if(tutRewindActive)return;    // no input during rewind
   const _mxLane=weatherType==='roadworks'?2:3;
   if(player.lane<_mxLane){
