@@ -3580,6 +3580,60 @@ function _drawTrackFingerHint(targetLane){
   ctx.restore();
 }
 
+/* ── Track mode double-tap jump hint ────────────────────────────────────
+   Pulsing finger on the player's current lane with double-tap rhythm.
+   Called when player is already in the correct lane for jumping.        */
+function _drawTrackDoubleTapHint(lane){
+  if(typeof window._FINGER_TAP === 'undefined') return;
+
+  const lx = LANE_XS[lane];
+  const cy = Math.round(H * 0.54);   // midscreen — visible above player car
+  const sz = 90;                      // matches slide hint size
+
+  // Double-tap rhythm: tap1 at t=0→0.30, tap2 at t=0.42→0.72, gap the rest
+  const cycle = 72;
+  const t = (frameCount % cycle) / cycle;
+
+  let scale = 1.0, rippleAlpha = 0;
+  if(t < 0.30){
+    const tp = t / 0.30;
+    scale = 1.0 + 0.22 * Math.sin(tp * Math.PI);
+    rippleAlpha = Math.sin(tp * Math.PI) * 0.72;
+  } else if(t >= 0.42 && t < 0.72){
+    const tp = (t - 0.42) / 0.30;
+    scale = 1.0 + 0.22 * Math.sin(tp * Math.PI);
+    rippleAlpha = Math.sin(tp * Math.PI) * 0.72;
+  }
+
+  const ds = sz * scale;
+
+  ctx.save();
+
+  // Lane glow
+  ctx.globalAlpha = 0.08 + 0.05 * Math.abs(fastSin(frameCount * 0.09));
+  ctx.fillStyle   = '#4ade80';
+  ctx.fillRect(lx - 35, 0, 70, H);
+
+  // Ripple ring — expands outward on each tap
+  if(rippleAlpha > 0.05){
+    const rippleR = 30 + rippleAlpha * 22;
+    ctx.globalAlpha = rippleAlpha * 0.55;
+    ctx.strokeStyle = '#4ade80';
+    ctx.lineWidth   = 2.5;
+    ctx.shadowColor = '#4ade80'; ctx.shadowBlur = 14;
+    ctx.beginPath(); ctx.arc(lx, cy + sz * 0.10, rippleR, 0, Math.PI * 2); ctx.stroke();
+    ctx.shadowBlur  = 0;
+  }
+
+  // Finger image — scaled on each tap
+  ctx.globalAlpha = 0.92;
+  if(window._FINGER_TAP.complete && window._FINGER_TAP.naturalWidth > 0){
+    ctx.drawImage(window._FINGER_TAP, lx - ds/2, cy - ds/2, ds, ds);
+  }
+
+  ctx.restore();
+}
+
 function drawTutorialPhase(){
   if(tutPhase<1||tutPhase>5) return;
   if(gst!==ST.PLAYING&&gst!==ST.RESPAWNING&&gst!==ST.CRASHING) return;
@@ -3700,8 +3754,12 @@ function drawTutorialPhase(){
           const _oRef = player.lane===1 ? tutObstRef : tutJumpObstRef2;
           if(_oRef && _oRef._active && _oRef.y >= SHOW_Y){
             _drawUpArrowOnObst(_oRef);
-            if(playMode==='track') _topBanner('Double-tap or Swipe ↑ to jump', '#bbf7d0', '#4ade80');
-            else _topBanner('Swipe ↑ to jump', '#bbf7d0', '#4ade80');
+            if(playMode==='track'){
+              _topBanner('Double-tap or Swipe ↑ to jump', '#bbf7d0', '#4ade80');
+              _drawTrackDoubleTapHint(player.lane);
+            } else {
+              _topBanner('Swipe ↑ to jump', '#bbf7d0', '#4ade80');
+            }
           }
         }
       }
