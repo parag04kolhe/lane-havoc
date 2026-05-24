@@ -4678,7 +4678,11 @@ function drawSplash(){
     const mtY=pbRestY+pbH+8;
     const sbRow1Y=mtY+mtH+8, sbRow2Y=sbRow1Y+sbH+sbGapY;
 
+    // ── PLAY button — slides up from below (tied to menuFadeIn) ──
+    const playSlide=(1-menuFadeIn)*28; // starts 28px low, rises to resting position
+
     // ── CHALLENGE BANNER — shown above PLAY when arriving via a challenge link ──
+    // NOTE: must be after playSlide declaration to avoid TDZ ReferenceError
     if(typeof challengeScore!=='undefined' && challengeScore>0 && menuFadeIn>0.2){
       const cbanW=286, cbanH=30, cbanX=W/2-cbanW/2, cbanY=pbRestY-46+playSlide;
       const cbanF=clamp((t-152)/14,0,1);
@@ -4705,9 +4709,6 @@ function drawSplash(){
         ctx.restore();
       }
     }
-
-    // ── PLAY button — slides up from below (tied to menuFadeIn) ──
-    const playSlide=(1-menuFadeIn)*28; // starts 28px low, rises to resting position
     const pbY=pbRestY+playSlide;
 
     // Pulse glow once fully visible

@@ -630,8 +630,8 @@ function _doShareRunSummary(){
       catch(e){return '#00e676';}
     })();
 
-    // ── Car zone: logical y 72–202 ──
-    const carCY=137;
+    // ── Car zone: car top at y=78, bottom ≈205, mid ≈141 ──
+    const carCY=141;
 
     // Radial halo behind car
     const halo=cardCtx.createRadialGradient(CW/2,carCY,10,CW/2,carCY,105);
@@ -676,10 +676,12 @@ function _doShareRunSummary(){
     }
 
     // ── Player car image (high-res embedded PNG) ──
+    // Car is 0.6× the original 160px = 96 logical units wide
+    // Logo occupies y≈7..69, so car starts at y=78 to avoid overlap
     if(_shareCarImg.complete&&_shareCarImg.naturalWidth>0){
-      // Draw at 160×211 logical units — centred at carCY
-      const cW=160, cH=Math.round(cW*_shareCarImg.naturalHeight/_shareCarImg.naturalWidth);
-      const cX=Math.round(CW/2-cW/2), cY=Math.round(carCY-cH/2)+4;
+      const cW=96, cH=Math.round(cW*_shareCarImg.naturalHeight/_shareCarImg.naturalWidth);
+      // Centre horizontally; top of car at y=78 (well below logo bottom at ~69)
+      const cX=Math.round(CW/2-cW/2), cY=78;
 
       // Skin colour tint overlay (if not default green)
       cardCtx.save();
@@ -692,19 +694,29 @@ function _doShareRunSummary(){
       }
       cardCtx.restore();
 
-      // Exhaust glow flames (two jets below the car rear)
-      [cX+cW*0.28, cX+cW*0.72].forEach(function(ex){
-        const fg=cardCtx.createLinearGradient(ex,cY+cH-2,ex,cY+cH+26);
-        fg.addColorStop(0,'#ffffa0');fg.addColorStop(0.3,'#ff8800');
-        fg.addColorStop(0.65,sc+'88');fg.addColorStop(1,'transparent');
-        cardCtx.save();cardCtx.globalAlpha=0.85;cardCtx.fillStyle=fg;
-        cardCtx.beginPath();cardCtx.ellipse(ex,cY+cH+10,4,13,0,0,Math.PI*2);cardCtx.fill();
+      // Exhaust glow flames matching gameplay style:
+      // two thin jets from rear exhaust pipes, colour from skin tint
+      const _exCarY = cY+cH;
+      [cX+cW*0.30, cX+cW*0.70].forEach(function(exX){
+        // Outer glow (wide, faint)
+        const fgOuter=cardCtx.createLinearGradient(exX,_exCarY,exX,_exCarY+20);
+        fgOuter.addColorStop(0,sc+'bb');fgOuter.addColorStop(0.5,sc+'44');
+        fgOuter.addColorStop(1,'transparent');
+        cardCtx.save();cardCtx.globalAlpha=0.55;cardCtx.fillStyle=fgOuter;
+        cardCtx.beginPath();cardCtx.ellipse(exX,_exCarY+8,5,12,0,0,Math.PI*2);cardCtx.fill();
+        cardCtx.restore();
+        // Inner core (narrow, bright)
+        const fgInner=cardCtx.createLinearGradient(exX,_exCarY,exX,_exCarY+14);
+        fgInner.addColorStop(0,'#ffffff');fgInner.addColorStop(0.25,'#ffffa0');
+        fgInner.addColorStop(0.6,'#ff8800');fgInner.addColorStop(1,'transparent');
+        cardCtx.save();cardCtx.globalAlpha=0.90;cardCtx.fillStyle=fgInner;
+        cardCtx.beginPath();cardCtx.ellipse(exX,_exCarY+5,2.2,8,0,0,Math.PI*2);cardCtx.fill();
         cardCtx.restore();
       });
     }
 
-    // ── Stage cleared ribbon ──
-    const rY=222,rW=220,rH=22,rX=CW/2-rW/2;
+    // ── Stage cleared ribbon — starts just below car bottom (~205) ──
+    const rY=212,rW=220,rH=22,rX=CW/2-rW/2;
     const rg=cardCtx.createLinearGradient(rX,rY,rX+rW,rY);
     rg.addColorStop(0,'rgba(245,158,11,0)');
     rg.addColorStop(0.12,'rgba(245,158,11,0.92)');
