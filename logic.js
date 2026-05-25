@@ -413,10 +413,27 @@ let coinIdCounter=0;
 const _COIN_LANE_WEIGHTS=[3,2,2,3];
 const _COIN_LANE_CUM=[3,5,7,10];
 function _weightedLane(cum){const r=Math.floor(Math.random()*cum[cum.length-1]);for(let i=0;i<cum.length;i++)if(r<cum[i])return i;return 3;}
+
+/* Returns lanes currently occupied by any active truck.
+   Coins and power-ups must never spawn in these lanes: trucks travel at 0.75×
+   speed so a coin/PU spawning behind a truck will catch up, visually embed
+   inside it, and become completely inaccessible to the player. */
+function _activeTruckLanes(){
+  const lanes=[];
+  for(let i=0;i<_TRUCK_POOL._n;i++){const t=_TRUCK_POOL[i];if(t._active)lanes.push(t.lane);}
+  return lanes;
+}
+
 function spawnCoin(dt){
   if(_COIN_POOL._count()>=6)return;
   if(Math.random()<0.018*dt){
-    const lane=_weightedLane(_COIN_LANE_CUM),count=Math.random()<0.3?3:1;
+    // Exclude lanes that have active trucks — coins would catch up to the
+    // slower truck and be unreachable by the player.
+    const _blocked=_activeTruckLanes();
+    const _avail=[0,1,2,3].filter(l=>!_blocked.includes(l));
+    if(!_avail.length)return;
+    const lane=_avail[Math.floor(Math.random()*_avail.length)];
+    const count=Math.random()<0.3?3:1;
     for(let i=0;i<count;i++){
       const c=_COIN_POOL._get();c.lane=lane;c.x=LANE_XS[lane];c.y=-20-i*50;c.id=coinIdCounter++;
     }
@@ -428,7 +445,11 @@ const _PU_LANE_CUM=[3,5,7,10];
 function spawnPowerUp(dt){
   if(_PU_POOL._count()>0)return;
   if(Math.random()<0.005*dt){
-    const lane=_weightedLane(_PU_LANE_CUM);
+    // Exclude truck lanes — a power-up sitting inside a truck is uncollectable.
+    const _blocked=_activeTruckLanes();
+    const _avail=[0,1,2,3].filter(l=>!_blocked.includes(l));
+    if(!_avail.length)return;
+    const lane=_avail[Math.floor(Math.random()*_avail.length)];
     const _regularTypes=PU_TYPES.filter(t=>t!=='gun');
     const type=_regularTypes[Math.floor(Math.random()*_regularTypes.length)];
     const pu=_PU_POOL._get();pu.lane=lane;pu.x=LANE_XS[lane];pu.y=-30;pu.type=type;
@@ -444,7 +465,11 @@ function spawnGunPowerUp(dt){
   if(gunSpawnCooldown>0)return;
   if(_PU_POOL._count()>0)return;
   if(Math.random()>=0.004*dt)return;
-  const lane=Math.floor(Math.random()*4);
+  // Exclude truck lanes — gun pickup must always be reachable.
+  const _blocked=_activeTruckLanes();
+  const _avail=[0,1,2,3].filter(l=>!_blocked.includes(l));
+  if(!_avail.length)return;
+  const lane=_avail[Math.floor(Math.random()*_avail.length)];
   const pu=_PU_POOL._get();
   pu.lane=lane;pu.x=LANE_XS[lane];pu.y=-30;pu.type='gun';
   gunLastStageSpawned=stageNum;
