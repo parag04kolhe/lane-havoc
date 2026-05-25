@@ -34,6 +34,7 @@ function initVars(){
   nitroReserve=false;nitroExpiryTimer=0;nitroTimerMax=240;
   nearMissStreak=0;comboDecay=0;comboMult=1;_NMPOP_POOL._reset();comboFlashTimer=0;
   coinStreak=0;coinStreakDecay=0;nitroSmashCount=0;
+  _playerLaneDwellTimer=0;_playerLaneDwellLane=-1;
   _RING_POOL._reset();_SPEEDLINE_POOL._reset();playerTilt=0;playerLaneVel=0;
   puBanner=null;
   lastNearMissFrame=-999;lastNearMissScore=0;
@@ -253,13 +254,16 @@ function getStageConfig(){
   const _pm = s>20 ? Math.min(1.50, 1.0 + (s-20)*0.04) : 1.0;
 
   // Base values (at stage 20 cap)
-  const _eRate = s<=1?0.009 : s<=3?0.013 : s<=5?0.016 : s<=7?0.019 : s<=9?0.023 : 0.026;
-  // Stage 2 obstacle rate raised 0.005→0.008 so rocks/manholes appear reliably in stage 2.
+  // Stages 1-3 enemy rate raised so the early game feels active and forces dodging.
+  // Stage 1: 0.009→0.012, Stage 2: 0.013→0.016, Stage 3: 0.013→0.018.
+  const _eRate = s<=1?0.012 : s===2?0.016 : s===3?0.018 : s<=5?0.016 : s<=7?0.019 : s<=9?0.023 : 0.026;
+  // Stage 2 obstacle rate raised so rocks/manholes appear reliably.
   // Stages 13–20 stepped up in small increments so the late game doesn't plateau flat.
   const _oRate = s<=1?0 : s===2?0.008 : s<=3?0.009 : s<=5?0.010 : s<=9?0.011 : s<=12?0.013 : s<=14?0.014 : s<=17?0.015 : 0.016;
-  // Enemy min-gap tightened in stages 13+ so cars cluster closer — more intense without more cars.
-  const _eGap  = s<=1?300 : s<=3?220 : s<=5?170 : s<=12?130 : s<=15?110 : 90;
-  const _eMax  = s<=1?2 : s<=3?3 : s<=7?4 : 6;
+  // Stage 1-3 min-gap tightened. Stage 13+ tightened further for late-game pressure.
+  const _eGap  = s<=1?240 : s===2?190 : s===3?170 : s<=5?170 : s<=12?130 : s<=15?110 : 90;
+  // Stage 1: 2→3, Stage 2-3: 3→4 — early road feels genuinely busy.
+  const _eMax  = s<=1?3 : s<=3?4 : s<=7?4 : 6;
   const _oMax  = s<=1?0 : s===2?1 : s<=3?2 : s<=7?2 : 3;
 
   return {
@@ -347,7 +351,24 @@ function spawnEnemy(dt){
   }
   const f=freeLanes(takenTop());
   if(f.length<1) return;
-  const lane=f[Math.floor(Math.random()*f.length)];
+
+  // ── Lane bias (stages 1–3 only) ──────────────────────────────────────────
+  // In the early game, enemies are weighted toward the player's lane and its
+  // neighbours so the player can't safely camp a center lane. Weight 3× for
+  // the player's own lane, 2× for adjacent lanes, 1× for far lanes.
+  // Bias only applies while there are at least 2 free lanes (always fair).
+  let lane;
+  if(stageNum<=3 && f.length>=2){
+    const _pl=player.lane;
+    const _weights=f.map(l=>Math.abs(l-_pl)===0?3:Math.abs(l-_pl)===1?2:1);
+    const _total=_weights.reduce((a,b)=>a+b,0);
+    let _r=Math.random()*_total;
+    lane=f[f.length-1]; // fallback
+    for(let i=0;i<f.length;i++){_r-=_weights[i];if(_r<=0){lane=f[i];break;}}
+  } else {
+    lane=f[Math.floor(Math.random()*f.length)];
+  }
+
   // Speed variation — tier changes by stage
   let speedMult=1.0;
   if(cfg.enemyVarChance>0 && Math.random()<cfg.enemyVarChance){
@@ -412,6 +433,10 @@ function spawnCattle(){
 }
 
 let coinIdCounter=0;
+// Tracks how many frames the player has stayed in the same lane — used for
+// lane-bias enemy spawning and coin pull in stages 1-3.
+let _playerLaneDwellTimer=0;
+let _playerLaneDwellLane=-1;
 // Lane weights: edges (0,3) = weight 3 each, centres (1,2) = weight 2 each → edges 50% more likely
 const _COIN_LANE_WEIGHTS=[3,2,2,3];
 const _COIN_LANE_CUM=[3,5,7,10];
@@ -433,8 +458,24 @@ function spawnCoin(dt){
     // Exclude lanes that have active trucks — coins would catch up to the
     // slower truck and be unreachable by the player.
     const _blocked=_activeTruckLanes();
-    const _avail=[0,1,2,3].filter(l=>!_blocked.includes(l));
+    let _avail=[0,1,2,3].filter(l=>!_blocked.includes(l));
     if(!_avail.length)return;
+
+    // ── Coin pull (stages 1–3 only) ───────────────────────────────────────
+    // Track how long the player has been in the same lane. Once they've
+    // been stationary for 120+ frames (~2s), bias coins away from their lane
+    // to reward lateral movement without ever blocking collection entirely.
+    if(_playerLaneDwellLane!==player.lane){
+      _playerLaneDwellLane=player.lane;
+      _playerLaneDwellTimer=0;
+    } else {
+      _playerLaneDwellTimer++;
+    }
+    if(stageNum<=3 && _playerLaneDwellTimer>=120 && _avail.length>1){
+      const _away=_avail.filter(l=>l!==player.lane);
+      if(_away.length>0) _avail=_away; // redirect coins to other lanes
+    }
+
     const lane=_avail[Math.floor(Math.random()*_avail.length)];
     const count=Math.random()<0.3?3:1;
     for(let i=0;i<count;i++){
