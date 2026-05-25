@@ -6165,6 +6165,33 @@ function drawLeaderboard(){
 }
 
 
+/* ── Shop car preview: cached player car with background removed ── */
+let _shopCarNoBg = null;
+function _ensureShopCarNoBg(){
+  if(_shopCarNoBg) return _shopCarNoBg;
+  const img = window._CAR_PLAYER;
+  if(!img || !img.complete || !img.naturalWidth) return null;
+  const iw = img.naturalWidth, ih = img.naturalHeight;
+  const oc = document.createElement('canvas');
+  oc.width = iw; oc.height = ih;
+  const ox = oc.getContext('2d');
+  ox.drawImage(img, 0, 0);
+  try {
+    const id = ox.getImageData(0, 0, iw, ih);
+    const d  = id.data;
+    // Sample background colour from the four corners and use the most-corner-like one
+    const br = d[0], bg = d[1], bb = d[2];
+    const tol = 40;
+    for(let i = 0; i < d.length; i += 4){
+      if(Math.abs(d[i]-br)<tol && Math.abs(d[i+1]-bg)<tol && Math.abs(d[i+2]-bb)<tol)
+        d[i+3] = 0; // make transparent
+    }
+    ox.putImageData(id, 0, 0);
+  } catch(e){ return null; }
+  _shopCarNoBg = oc;
+  return oc;
+}
+
 function drawShop(){
   const PW=316,PH=450,PX=(W-PW)/2,PY=(H-PH)/2-10;
   ctx.fillStyle='rgba(0,0,0,0.85)';ctx.fillRect(0,0,W,H);
@@ -6209,8 +6236,26 @@ function drawShop(){
   const previewY=PY+145;
   ctx.save();
   if(shopTab===0){
-    ctx.save();ctx.scale(1.15,1.15);
-    drawCar(W/2/1.15,previewY/1.15,item.color,item.hl,true,0);ctx.restore();
+    const _noBg = _ensureShopCarNoBg();
+    if(_noBg){
+      const _pw=62, _ph=104;
+      // Hue-rotate the green base image into each skin's colour
+      const _skinFilters={
+        circuit:   'none',
+        red:       'hue-rotate(240deg) saturate(1.4)',
+        blue:      'hue-rotate(100deg) saturate(1.3)',
+        cyan:      'hue-rotate(60deg)  saturate(1.2)',
+        purple:    'hue-rotate(155deg) saturate(1.3)',
+        gold:      'hue-rotate(290deg) saturate(1.5) brightness(1.1)',
+      };
+      ctx.filter = _skinFilters[item.id] || 'none';
+      ctx.drawImage(_noBg, (W/2-_pw/2)|0, (previewY-_ph/2)|0, _pw, _ph);
+      ctx.filter = 'none';
+    } else {
+      // Fallback to canvas car if image not ready
+      ctx.save();ctx.scale(1.15,1.15);
+      drawCar(W/2/1.15,previewY/1.15,item.color,item.hl,true,0);ctx.restore();
+    }
   } else if(shopTab===1){
     const cols=item.cols||['#94a3b8','#64748b','#cbd5e1'];
     const n=cols.length;
