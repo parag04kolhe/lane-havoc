@@ -254,8 +254,11 @@ function getStageConfig(){
 
   // Base values (at stage 20 cap)
   const _eRate = s<=1?0.009 : s<=3?0.013 : s<=5?0.016 : s<=7?0.019 : s<=9?0.023 : 0.026;
-  const _oRate = s<=1?0 : s===2?0.005 : s<=3?0.007 : s<=5?0.009 : s<=9?0.011 : 0.013;
-  const _eGap  = s<=1?300 : s<=3?220 : s<=5?170 : 130;
+  // Stage 2 obstacle rate raised 0.005→0.008 so rocks/manholes appear reliably in stage 2.
+  // Stages 13–20 stepped up in small increments so the late game doesn't plateau flat.
+  const _oRate = s<=1?0 : s===2?0.008 : s<=3?0.009 : s<=5?0.010 : s<=9?0.011 : s<=12?0.013 : s<=14?0.014 : s<=17?0.015 : 0.016;
+  // Enemy min-gap tightened in stages 13+ so cars cluster closer — more intense without more cars.
+  const _eGap  = s<=1?300 : s<=3?220 : s<=5?170 : s<=12?130 : s<=15?110 : 90;
   const _eMax  = s<=1?2 : s<=3?3 : s<=7?4 : 6;
   const _oMax  = s<=1?0 : s===2?1 : s<=3?2 : s<=7?2 : 3;
 
@@ -270,9 +273,9 @@ function getStageConfig(){
     // Min px gap shrinks post-stage but never below 80px (keeps game fair)
     enemyMinGap:  Math.max(80, Math.round(_eGap / _pm)),
     // Speed variation: fraction of enemies that get it, and ±range as fraction of base
-    // Stage 3: 40% cars ±40%. Stage 6-7: 30% cars ±30%. Stage 8+: 40% cars ±20%.
+    // Stage 3: 40% cars ±40%. Stage 6-7: 30% cars ±30%. Stage 8-12: 40% cars ±20%. Stage 13+: 40% cars ±30%.
     enemyVarChance: s===3?0.40 : (s>=6&&s<=7)?0.30 : s>=8?0.40 : 0,
-    enemyVarRange:  s===3?0.40 : (s>=6&&s<=7)?0.30 : s>=8?0.20 : 0,
+    enemyVarRange:  s===3?0.40 : (s>=6&&s<=7)?0.30 : s>=13?0.30 : s>=8?0.20 : 0,
 
     // ── Obstacles ──────────────────────────────
     // Spawn probability per frame — scaled, hard cap 0.018
@@ -891,13 +894,6 @@ function _beginTutRewind(){
 ══════════════════════════════════════════════ */
 function triggerCrash(type,cx,cy,cattleIdx){
   if(gst!==ST.PLAYING)return;
-  // ── TUTORIAL PHASES 1-3: let crash play normally, then rewind instead of gameover ──
-  // We flag it here so the real crash animation (particles, shake, sound) plays,
-  // then _beginTutRewind() is called from the ST.CRASHING handler after 90 frames.
-  if(tutPhase>=1&&tutPhase<=3&&!tutRewindActive&&!tutCrashPending&&nitroTimer<=0){
-    _flagTutCrash(type);
-    // Fall through — normal crash logic below handles the rest
-  }
   // ── NITRO INVINCIBILITY: car smashes through everything during boost ──
   if(nitroTimer>0){
     // Track smashes within this nitro window
@@ -972,6 +968,15 @@ function triggerCrash(type,cx,cy,cattleIdx){
     // still-overlapping obstacle can't immediately re-crash the now-shieldless player
     postShieldGrace=45;
     return;
+  }
+  // ── TUTORIAL PHASES 1-3: flag crash ONLY after all protections are exhausted ──
+  // Placed here (after nitro/ghost/shield checks) so a shield/ghost/nitro save
+  // during tutorial does NOT erroneously set tutCrashPending=true, which would
+  // otherwise corrupt the rewind state and leave the player vulnerable on the next hit.
+  if(tutPhase>=1&&tutPhase<=3&&!tutRewindActive&&!tutCrashPending&&nitroTimer<=0){
+    _flagTutCrash(type);
+    // Fall through — normal crash logic below plays the animation;
+    // _beginTutRewind() fires from the ST.CRASHING handler after 90 frames.
   }
   // ── CERTAIN CRASH — all protection exhausted ──
   // Trigger cinematic slow-mo exactly when crash is guaranteed.
@@ -1530,6 +1535,7 @@ function update(dt){
         return;
       }
       player.lives--;updateLivesHUD();
+      lifeMsg=null; // clear any pending life-gain animation — its newLives count is now stale and would overwrite the correct HUD
       if(player.lives<=0){
         // Offer revive if score >= 300 and haven't used it this run
         if(Math.floor(score)>=300&&!reviveUsed){
@@ -1642,7 +1648,14 @@ function update(dt){
       } else {
         stageFlash={stage:stageNum,timer:220,boss:false,bonus:stageBonus,isMilestone:(stageNum%5===0)};
       }
-      if(s%2===0&&player.lives<3){
+      // Extra life schedule — three phases to increase late-game tension:
+      // Stages 2–8:  every 2 stages (safe onboarding window)
+      // Stages 9–14: every 3 stages (safety net starts pulling away)
+      // Stage 15+:   no free lives — chaos mode should feel genuinely dangerous
+      // Hard cap at 2 lives from stage 12+ even if player has shield-start boost.
+      const _lifeMaxAllowed = stageNum>=12 ? 2 : 3;
+      const _lifeEligible = stageNum<=8 ? (s%2===0) : stageNum<=14 ? (s%3===0) : false;
+      if(_lifeEligible && player.lives<_lifeMaxAllowed){
         player.lives++;
         // Show OLD heart count in HUD — new heart appears only when animation lands
         _redrawHeartsCanvas(player.lives-1);
