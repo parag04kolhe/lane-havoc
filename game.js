@@ -564,7 +564,8 @@ let lbError       = '';
 let lbMyRank      = 0;
 let lbScrollY     = 0;   // scroll offset for leaderboard list (pixels)
 let lbLastRunScore= 0;   // the player's most recent run score (shown below top 20)
-let lbMyEstimatedRank = 0;   // best rank after game over (0 = no data yet)
+let lbMyEstimatedRank = 0;   // all-time best rank (never regresses)
+let lbRunEstimatedRank= 0;   // rank for the current run's score specifically
 let lbRankLoading     = false; // true while rank fetch is in progress
 
 // Fetch top 20 scores ordered by score descending — used for leaderboard display only
@@ -633,6 +634,7 @@ async function _llHandleGameOver(finalScore){
 
   // Show "RANKING..." while the async fetch is in progress
   lbMyEstimatedRank=0;
+  lbRunEstimatedRank=0;
   lbRankLoading=true;
 
   // Only write to Supabase when this run is a new personal best.
@@ -649,11 +651,21 @@ async function _llHandleGameOver(finalScore){
 
   // Server-side count query — Supabase counts ALL rows that beat _rankScore.
   // This works correctly regardless of whether there are 20 or 20,000 players.
-  // rank #21 for below-top-20 is now impossible — the real count is returned.
   try{
     const _rank=await _llFetchRank(_rankScore);
     lbMyEstimatedRank=_rank>0?_rank:0;
-  }catch(e){ lbMyEstimatedRank=0; }
+    // Also fetch rank for this run's actual score (may differ from personal best)
+    if(finalScore>=playerBestScore){
+      // New best — run rank equals all-time best
+      lbRunEstimatedRank=lbMyEstimatedRank;
+    }else{
+      // Not a new best — fetch run rank separately
+      try{
+        const _rr=await _llFetchRank(finalScore);
+        lbRunEstimatedRank=_rr>0?_rr:0;
+      }catch(e){ lbRunEstimatedRank=0; }
+    }
+  }catch(e){ lbMyEstimatedRank=0; lbRunEstimatedRank=0; }
   lbRankLoading=false;
 }
 

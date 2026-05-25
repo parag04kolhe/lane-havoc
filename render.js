@@ -5824,7 +5824,7 @@ function drawGameOver(){
   ctx.strokeStyle='rgba(255,255,255,0.06)';ctx.lineWidth=1;
   ctx.beginPath();ctx.moveTo(PX+16,PY+90);ctx.lineTo(PX+PW-16,PY+90);ctx.stroke();
 
-  // ── Global Rank (always based on personal best — never regresses after a bad run) ──
+  // ── Global Rank — run rank + all-time best ──
   if(lbRankLoading||lbMyEstimatedRank>0){
     ctx.save();ctx.textAlign='center';ctx.textBaseline='middle';
     ctx.font="bold 9px 'Orbitron',sans-serif";
@@ -5838,22 +5838,23 @@ function drawGameOver(){
       const _isTop10=lbMyEstimatedRank<=10;
       if(_isTop10){ctx.shadowColor='#fbbf24';ctx.shadowBlur=14;}
       ctx.fillStyle=_isTop10?'#fbbf24':'#22d3ee';
-      ctx.fillText('\uD83C\uDF0D BEST RANK: #'+lbMyEstimatedRank,W/2,PY+97);
+      // Show both: this run's rank and the all-time personal best rank
+      if(lbRunEstimatedRank>0&&lbRunEstimatedRank!==lbMyEstimatedRank){
+        ctx.font="bold 8.5px 'Orbitron',sans-serif";
+        ctx.fillText('\uD83C\uDF0D Rank #'+lbRunEstimatedRank+'  |  All-Time Best #'+lbMyEstimatedRank,W/2,PY+97);
+      }else{
+        ctx.fillText('\uD83C\uDF0D All-Time Best: #'+lbMyEstimatedRank,W/2,PY+97);
+      }
       ctx.shadowBlur=0;
-      // Sub-label — small muted text so player understands it reflects their best score
-      ctx.font="500 7px 'Rajdhani',sans-serif";
-      ctx.fillStyle='rgba(148,163,184,0.55)';
-      ctx.fillText('based on your personal best',W/2,PY+108);
     }
     ctx.restore();
   }
 
-  // ── 4 key action stats (18px rows) — start at PY+112 to make room for rank line ──
+  // ── 3 key action stats (18px rows) — start at PY+112 to make room for rank line ──
   const stats=[
-    ['Near-Misses',  runNearMisses,     '#f97316'],
+    ['Near-Misses',  runNearMisses,       '#f97316'],
     ['Best Streak',  runMaxCombo+'\u00d7','#ef4444'],
-    ['Coins Earned', '+'+sessionCoins,  '#fbbf24'],
-    ['Stage Reached',stageNum,          '#a78bfa'],
+    ['Coins Earned', '+'+sessionCoins,    '#fbbf24'],
   ];
   stats.forEach(([k,v,c],i)=>{
     const ry=PY+112+i*18;
@@ -5904,11 +5905,6 @@ function drawGameOver(){
     ctx.fillText(_rightTxt,PX+PW-14,PY+194);ctx.shadowBlur=0;
   }
 
-  // Weekly progress hint below bar
-  ctx.font="500 7px 'Rajdhani',sans-serif";ctx.fillStyle='rgba(148,163,184,0.55)';
-  ctx.textAlign='center';ctx.textBaseline='top';
-  const _wXPcap=Math.min(_wXP,_wXPT);
-  ctx.fillText('WEEK XP: '+_wXPcap+' / '+_wXPT+(_wFill>=1?' \u2713':' to claim +100 \uD83E\uDE99'),W/2,PY+200);
   ctx.textBaseline='alphabetic';
   ctx.restore();
 

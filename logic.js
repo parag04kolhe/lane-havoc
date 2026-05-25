@@ -666,10 +666,12 @@ function _doShareRunSummary(){
       catch(e){return '#00e676';}
     })();
 
-    // ── Best Rank ribbon — sits just below OG image ──
-    const rY=ogH+8,rW=240,rH=22,rX=CW/2-rW/2;
+    // ── Dual-rank ribbon — sits just below OG image ──
+    const rY=ogH+8,rW=272,rH=22,rX=CW/2-rW/2;
     const rankStr=(typeof lbMyEstimatedRank!=='undefined'&&lbMyEstimatedRank>0)
       ?('#'+lbMyEstimatedRank):'#?';
+    const runRankStr=(typeof lbRunEstimatedRank!=='undefined'&&lbRunEstimatedRank>0)
+      ?('#'+lbRunEstimatedRank):'#?';
     const rg=cardCtx.createLinearGradient(rX,rY,rX+rW,rY);
     rg.addColorStop(0,'rgba(245,158,11,0)');
     rg.addColorStop(0.12,'rgba(245,158,11,0.92)');
@@ -677,9 +679,9 @@ function _doShareRunSummary(){
     rg.addColorStop(1,'rgba(245,158,11,0)');
     cardCtx.save();
     cardCtx.fillStyle=rg;cardCtx.fillRect(rX,rY,rW,rH);
-    cardCtx.font="bold 9.5px 'Orbitron',monospace";
+    cardCtx.font="bold 9px 'Orbitron',monospace";
     cardCtx.fillStyle='#0a0c14';cardCtx.textAlign='center';cardCtx.textBaseline='middle';
-    cardCtx.fillText('\u2605  BEST RANK  '+rankStr+'  \u2605',CW/2,rY+11);
+    cardCtx.fillText('\uD83C\uDF0D Rank '+runRankStr+'  \u2502  All-Time Best '+rankStr,CW/2,rY+11);
     cardCtx.restore();
 
     // ── Score — large Orbitron ──
@@ -709,10 +711,10 @@ function _doShareRunSummary(){
     cardCtx.restore();
 
     // ── Footer ──
-    cardCtx.font="500 9px 'Rajdhani',sans-serif";
-    cardCtx.fillStyle='rgba(255,255,255,0.20)';
+    cardCtx.font="700 9px 'Orbitron',sans-serif";
+    cardCtx.fillStyle='#ffffff';
     cardCtx.textAlign='center';cardCtx.textBaseline='middle';
-    cardCtx.fillText('Lane Havoc  \u2022  CAN YOU BEAT THIS?',CW/2,divY+14);
+    cardCtx.fillText('CAN YOU BEAT THIS?',CW/2,divY+14);
 
     cardCtx.restore(); // end scale
   }
