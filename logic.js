@@ -54,6 +54,7 @@ function initVars(){
   _tutNitroTapReady=false;_tutNitroTapped=false;
   tutNitroArrowActive=false;tutNitroArrowTapped=false;
   tutNitroArrowFading=false;tutNitroPostSmash1Timer=0;
+  tutNitroAllSmashed=false;
   tutPhase9Enemies=[];
   // New tutorial vars
   tutPhase2Spawned=false;
@@ -2121,7 +2122,7 @@ function update(dt){
         tutNitroObst1Ref=_to1;
         const _te3=_ENEMY_POOL._get();_te3.lane=_lane4;_te3.y=player.y-550;_te3.nmChecked=true;_te3.speedMult=1.0;_te3._perfectDodge=false;_te3._tutSmashed=false;
         tutNitroObst2Ref=_te3;
-        const _to3=_OBST_POOL._get();_to3.lane=_lane4;_to3.y=player.y-750;_to3.type='manhole';_to3.nmChecked=true;_to3._tutSmashed=false;
+        const _to3=_OBST_POOL._get();_to3.lane=_lane4;_to3.y=player.y-950;_to3.type='manhole';_to3.nmChecked=true;_to3._tutSmashed=false;
         tutNitroObst3Ref=_to3;
       }
 
@@ -2131,16 +2132,25 @@ function update(dt){
       }
 
       // ── Nitro smash mode — tutNitroMoveLocked set by doNitroFire() ──
-      if(tutNitroMoveLocked){
+      // Once all 3 obstacles are smashed, lane switching is unlocked immediately
+      // but the nitro effect runs to its natural end before advancing to phase 5.
+      if(tutNitroMoveLocked||tutNitroAllSmashed){
         tutSpeedTarget=1.0;
         const _allSmashed=(!tutNitroObst1Ref||tutNitroObst1Ref._tutSmashed)&&
                           (!tutNitroObst2Ref||tutNitroObst2Ref._tutSmashed)&&
                           (!tutNitroObst3Ref||tutNitroObst3Ref._tutSmashed);
-        if(_allSmashed||nitroTimer<=0){
+        // 3rd obstacle smashed — unlock lane switching but keep nitro running
+        if(_allSmashed&&tutNitroMoveLocked){
+          tutNitroAllSmashed=true;
+          tutNitroMoveLocked=false; // player can now switch lanes freely
+        }
+        // Advance to phase 5 only once nitro naturally expires
+        if(nitroTimer<=0){
           tutSpeedTarget=1.0;
           tutPhase=5;tutPhaseTimer=0;
           tutNitroMoveLocked=false;
-          nitroTimer=0;nitroMult=1;nitroSmashCount=0;
+          tutNitroAllSmashed=false;
+          nitroMult=1;nitroSmashCount=0;
           tutCertifiedSndDone=false;
         }
       } else if(!tutNitroWarmupActive){
