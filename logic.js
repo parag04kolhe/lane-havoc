@@ -66,6 +66,7 @@ function initVars(){
   tutNitroWarmupActive=false;tutNitroWarmupTimer=0;
   // Note: _nitroTutDone is NOT reset here — it is a run-persistent flag loaded from localStorage
   newRecordFlash=0;hasPassedBest=false;
+  coinCountUpValue=0;coinCountUpTimer=0;coinCountUpDone=false;barToggleTimer=0;barToggleMode='xp';
   respawnFadeTimer=0;newBestCelebTimer=0;confettiParticles=[];
   runNearMisses=0;runCattleDodged=0;runMaxCombo=0;runStagesSurvived=0;
   runNitroInRain=false;runNitroRainDone=false;
@@ -1570,6 +1571,7 @@ function update(dt){
       saveLifetimeStats();
       lbLastRunScore=Math.floor(score);
       _llHandleGameOver(Math.floor(score));
+      coinCountUpValue=0;coinCountUpTimer=0;coinCountUpDone=false;barToggleTimer=0;barToggleMode='xp';
       gst=ST.GAMEOVER;stopBgMusic();stopWeatherSnd();if(AC)startMenuMusic();
     }
     return;
@@ -1600,6 +1602,7 @@ function update(dt){
           saveLifetimeStats();
           lbLastRunScore=Math.floor(score);
           _llHandleGameOver(Math.floor(score));
+          coinCountUpValue=0;coinCountUpTimer=0;coinCountUpDone=false;barToggleTimer=0;barToggleMode='xp';
           gst=ST.GAMEOVER;stopBgMusic();stopWeatherSnd();if(AC)startMenuMusic();
         }
       } else {

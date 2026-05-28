@@ -5788,6 +5788,31 @@ function drawGameOver(){
   const isBest=_finalScore>=bestScore&&bestScore>0;
   // PH=380 — clean, no clutter, no all-time bests block
   const PW=308,PH=380,PX=(W-PW)/2,PY=(H-PH)/2-20;
+
+  // ── Animate coin count-up (runs every frame while on summary screen) ──
+  if(!coinCountUpDone){
+    coinCountUpTimer++;
+    const _dur=90; // 1.5s at 60fps
+    const _t=Math.min(1,coinCountUpTimer/_dur);
+    const _ease=1-Math.pow(1-_t,3); // ease-out cubic: fast start, slow settle
+    coinCountUpValue=Math.round(sessionCoins*_ease);
+    if(_t>=1){coinCountUpDone=true;coinCountUpValue=sessionCoins;}
+  }else{
+    // Tick the bar toggle timer after count-up completes
+    barToggleTimer++;
+    // Determine which bar mode we're in (XP or unlock progress)
+    // Each mode holds for 240 frames (4s), with a 12-frame fade on entry
+    const _HOLD=240,_FADE=12;
+    const _allShop=[...SKINS,...TRAILS,...BOOSTS];
+    const _hasUnlock=_allShop.some(it=>!isOwned(it.id)&&it.price>0);
+    if(_hasUnlock){
+      const _cyc=barToggleTimer%(_HOLD*2);
+      barToggleMode=_cyc<_HOLD?'xp':'unlock';
+    }else{
+      barToggleMode='xp';
+    }
+  }
+
   ctx.fillStyle='rgba(0,0,0,0.75)';ctx.fillRect(0,0,W,H);
   const _panelCol=isBest?'#fbbf24':'#ef4444';
   drawGlassPanel(PX,PY,PW,PH,16,_panelCol);
@@ -5826,7 +5851,6 @@ function drawGameOver(){
     ctx.save();ctx.textAlign='center';ctx.textBaseline='middle';
     ctx.font="bold 9px 'Orbitron',sans-serif";
     if(lbRankLoading){
-      // Pulsing "RANKING..." while fetch is in progress
       const _rankPulse=0.45+Math.sin(frameCount*0.12)*0.45;
       ctx.globalAlpha=_rankPulse;
       ctx.fillStyle='#64748b';
@@ -5835,7 +5859,6 @@ function drawGameOver(){
       const _isTop10=lbMyEstimatedRank<=10;
       if(_isTop10){ctx.shadowColor='#fbbf24';ctx.shadowBlur=14;}
       ctx.fillStyle=_isTop10?'#fbbf24':'#22d3ee';
-      // Show both: this run's rank and the all-time personal best rank
       if(lbRunEstimatedRank>0&&lbRunEstimatedRank!==lbMyEstimatedRank){
         ctx.font="bold 8.5px 'Orbitron',sans-serif";
         ctx.fillText('\uD83C\uDF0D Rank #'+lbRunEstimatedRank+'  |  All-Time Best #'+lbMyEstimatedRank,W/2,PY+97);
@@ -5847,78 +5870,120 @@ function drawGameOver(){
     ctx.restore();
   }
 
-  // ── 3 key action stats (18px rows) — start at PY+112 to make room for rank line ──
+  // ── 3 key action stats (18px rows) ──
+  // Coins Earned shows animated count-up; colour brightens slightly while animating
+  const _coinAnimating=!coinCountUpDone;
+  const _coinCol=_coinAnimating?'#fde68a':'#fbbf24';
   const stats=[
-    ['Near-Misses',  runNearMisses,       '#f97316'],
-    ['Best Streak',  runMaxCombo+'\u00d7','#ef4444'],
-    ['Coins Earned', '+'+sessionCoins,    '#fbbf24'],
+    ['Near-Misses',  runNearMisses,                '#f97316'],
+    ['Best Streak',  runMaxCombo+'\u00d7',         '#ef4444'],
+    ['Coins Earned', '+'+coinCountUpValue,          _coinCol ],
   ];
   stats.forEach(([k,v,c],i)=>{
     const ry=PY+112+i*18;
     ctx.font="600 10px 'Rajdhani',sans-serif";ctx.fillStyle='#94a3b8';ctx.textAlign='right';ctx.fillText(k,W/2-4,ry);
-    ctx.font="bold 10px 'Orbitron',sans-serif";ctx.fillStyle=c;ctx.textAlign='left';ctx.fillText(v,W/2+6,ry);
+    ctx.font="bold 10px 'Orbitron',sans-serif";ctx.fillStyle=c;
+    // Coin row: brief glow while counting, stronger glow on first frame done
+    if(i===2&&_coinAnimating){ctx.shadowColor='#fbbf24';ctx.shadowBlur=4;}
+    ctx.textAlign='left';ctx.fillText(v,W/2+6,ry);ctx.shadowBlur=0;
   });
 
   // Divider
   ctx.strokeStyle='rgba(255,255,255,0.08)';ctx.lineWidth=1;
   ctx.beginPath();ctx.moveTo(PX+16,PY+178);ctx.lineTo(PX+PW-16,PY+178);ctx.stroke();
 
-  // ── XP compact row — one line: level·title + inline bar + +XP ──
-  ctx.save();
-  const _lvl=typeof driverLevel!=='undefined'?driverLevel:1;
-  const _wXP=typeof weeklyXP!=='undefined'?weeklyXP:0;
-  const _wXPT=typeof WEEKLY_XP_TARGET!=='undefined'?WEEKLY_XP_TARGET:5000;
-  const _xpG=typeof _lastXpGained!=='undefined'?_lastXpGained:0;
-  const _title=typeof getDriverTitle==='function'?getDriverTitle():'ROOKIE';
-  const _wFill=Math.min(1,_wXPT>0?_wXP/_wXPT:0);
-
-  ctx.textBaseline='middle';
-  const _leftTxt='\u2B50 LVL '+_lvl+' \u00B7 '+_title;
-  const _rightTxt=_xpG>0?'+'+_xpG+' XP':'';
-  ctx.font="700 9px 'Rajdhani',sans-serif";
-  const _lW=ctx.measureText(_leftTxt).width;
-  const _rW=_rightTxt?ctx.measureText(_rightTxt).width:0;
-  const _avail=PW-28-_lW-_rW;
-  const _barW=Math.max(24,_avail-12);
-  const _barX=PX+14+_lW+6;
-  const _barY=PY+191;const _barH=6;
-
-  // Level text
-  ctx.textAlign='left';ctx.fillStyle='#fbbf24';
-  ctx.fillText(_leftTxt,PX+14,PY+194);
-
-  // Inline bar
-  ctx.fillStyle='rgba(255,255,255,0.08)';rr(_barX,_barY,_barW,_barH,3);ctx.fill();
-  if(_wFill>0){
-    ctx.fillStyle=_wFill>=1?'#4ade80':'#fbbf24';
-    ctx.shadowColor=_wFill>=1?'#22c55e':'#f59e0b';ctx.shadowBlur=4;
-    rr(_barX,_barY,_barW*_wFill,_barH,3);ctx.fill();ctx.shadowBlur=0;
-  }
-
-  // XP gained
-  if(_rightTxt){
-    ctx.textAlign='right';ctx.fillStyle='#4ade80';
-    ctx.shadowColor='#22c55e';ctx.shadowBlur=5;
-    ctx.fillText(_rightTxt,PX+PW-14,PY+194);ctx.shadowBlur=0;
-  }
-
-  ctx.textBaseline='alphabetic';
-  ctx.restore();
-
-  // ── Next unlock nudge — only when ≥70% affordable ──
-  const _allItems=[...SKINS,...TRAILS,...BOOSTS];
-  const _nextItem=_allItems.find(it=>!isOwned(it.id)&&it.price>0&&coinBank>=it.price*0.7);
-  if(_nextItem){
-    ctx.save();ctx.textAlign='center';ctx.textBaseline='alphabetic';
-    ctx.font="600 8px 'Rajdhani',sans-serif";
-    if(coinBank>=_nextItem.price){
-      ctx.fillStyle='#4ade80';ctx.shadowColor='#22c55e';ctx.shadowBlur=5;
-      ctx.fillText('\u2713 Unlock '+_nextItem.name+' now! ('+_nextItem.price+' coins)',W/2,PY+220);ctx.shadowBlur=0;
-    } else {
-      ctx.fillStyle='#94a3b8';
-      ctx.fillText((_nextItem.price-coinBank)+' more coins to unlock '+_nextItem.name,W/2,PY+220);
+  // ── Toggling bar row: XP progress ↔ unlock progress ──
+  // Fades in after count-up completes; toggles every 4s
+  {
+    const _HOLD=240,_FADE=12;
+    // Compute fade-in alpha for the current mode
+    let _barAlpha=0;
+    if(coinCountUpDone){
+      const _cyc=barToggleTimer%(_HOLD*2);
+      const _localT=_cyc<_HOLD?_cyc:_cyc-_HOLD;
+      _barAlpha=Math.min(1,_localT/_FADE);
     }
+
+    ctx.save();ctx.globalAlpha=_barAlpha;ctx.textBaseline='middle';
+    const _barY=PY+191,_barH=6;
+
+    if(barToggleMode==='xp'){
+      // ── XP row: level · title [====bar====] +XP ──
+      const _lvl=typeof driverLevel!=='undefined'?driverLevel:1;
+      const _wXP=typeof weeklyXP!=='undefined'?weeklyXP:0;
+      const _wXPT=typeof WEEKLY_XP_TARGET!=='undefined'?WEEKLY_XP_TARGET:5000;
+      const _xpG=typeof _lastXpGained!=='undefined'?_lastXpGained:0;
+      const _title=typeof getDriverTitle==='function'?getDriverTitle():'ROOKIE';
+      const _wFill=Math.min(1,_wXPT>0?_wXP/_wXPT:0);
+      const _leftTxt='\u2B50 LVL '+_lvl+' \u00B7 '+_title;
+      const _rightTxt=_xpG>0?'+'+_xpG+' XP':'';
+      ctx.font="700 9px 'Rajdhani',sans-serif";
+      const _lW=ctx.measureText(_leftTxt).width;
+      const _rW=_rightTxt?ctx.measureText(_rightTxt).width:0;
+      const _barW=Math.max(24,PW-28-_lW-_rW-12);
+      const _barX=PX+14+_lW+6;
+      ctx.textAlign='left';ctx.fillStyle='#fbbf24';
+      ctx.fillText(_leftTxt,PX+14,PY+194);
+      ctx.fillStyle='rgba(255,255,255,0.08)';rr(_barX,_barY,_barW,_barH,3);ctx.fill();
+      if(_wFill>0){
+        ctx.fillStyle=_wFill>=1?'#4ade80':'#fbbf24';
+        ctx.shadowColor=_wFill>=1?'#22c55e':'#f59e0b';ctx.shadowBlur=4;
+        rr(_barX,_barY,_barW*_wFill,_barH,3);ctx.fill();ctx.shadowBlur=0;
+      }
+      if(_rightTxt){
+        ctx.textAlign='right';ctx.fillStyle='#4ade80';
+        ctx.shadowColor='#22c55e';ctx.shadowBlur=5;
+        ctx.fillText(_rightTxt,PX+PW-14,PY+194);ctx.shadowBlur=0;
+      }
+    }else{
+      // ── Unlock progress row: 🎁 ITEM [====bar====] X/price ──
+      const _allShop=[...SKINS,...TRAILS,...BOOSTS];
+      const _uItem=_allShop.filter(it=>!isOwned(it.id)&&it.price>0)
+        .sort((a,b)=>a.price-b.price)[0]||null;
+      if(_uItem){
+        const _fill=Math.min(1,coinBank/_uItem.price);
+        const _ready=coinBank>=_uItem.price;
+        const _leftTxt='\uD83C\uDF81 '+_uItem.name; // 🎁
+        const _rightTxt=_ready?'READY!':(coinBank+'/'+_uItem.price);
+        ctx.font="700 9px 'Rajdhani',sans-serif";
+        const _lW=ctx.measureText(_leftTxt).width;
+        const _rW=ctx.measureText(_rightTxt).width;
+        const _barW=Math.max(24,PW-28-_lW-_rW-12);
+        const _barX=PX+14+_lW+6;
+        ctx.textAlign='left';ctx.fillStyle=_ready?'#4ade80':'#94a3b8';
+        if(_ready){ctx.shadowColor='#22c55e';ctx.shadowBlur=5;}
+        ctx.fillText(_leftTxt,PX+14,PY+194);ctx.shadowBlur=0;
+        ctx.fillStyle='rgba(255,255,255,0.08)';rr(_barX,_barY,_barW,_barH,3);ctx.fill();
+        if(_fill>0){
+          const _pc=_ready?'#4ade80':'#38bdf8';
+          ctx.fillStyle=_pc;ctx.shadowColor=_pc;ctx.shadowBlur=4;
+          rr(_barX,_barY,_barW*_fill,_barH,3);ctx.fill();ctx.shadowBlur=0;
+        }
+        ctx.textAlign='right';ctx.fillStyle=_ready?'#4ade80':'#64748b';
+        if(_ready){ctx.shadowColor='#22c55e';ctx.shadowBlur=5;}
+        ctx.fillText(_rightTxt,PX+PW-14,PY+194);ctx.shadowBlur=0;
+      }
+    }
+    ctx.textBaseline='alphabetic';
     ctx.restore();
+  }
+
+  // ── Unlock nudge — only shown after count-up completes ──
+  if(coinCountUpDone){
+    const _allItems=[...SKINS,...TRAILS,...BOOSTS];
+    const _nextItem=_allItems.find(it=>!isOwned(it.id)&&it.price>0&&coinBank>=it.price*0.7);
+    if(_nextItem){
+      ctx.save();ctx.textAlign='center';ctx.textBaseline='alphabetic';
+      ctx.font="600 8px 'Rajdhani',sans-serif";
+      if(coinBank>=_nextItem.price){
+        ctx.fillStyle='#4ade80';ctx.shadowColor='#22c55e';ctx.shadowBlur=5;
+        ctx.fillText('\u2713 Unlock '+_nextItem.name+' now! ('+_nextItem.price+' coins)',W/2,PY+220);ctx.shadowBlur=0;
+      }else{
+        ctx.fillStyle='#94a3b8';
+        ctx.fillText((_nextItem.price-coinBank)+' more coins to unlock '+_nextItem.name,W/2,PY+220);
+      }
+      ctx.restore();
+    }
   }
 
   // ── Mission compact row — dots inline with text ──
@@ -5926,7 +5991,7 @@ function drawGameOver(){
   const _wdone=typeof weeklyAllDone!=='undefined'&&weeklyAllDone;
   const _midx=typeof weeklyMissionIdx!=='undefined'?weeklyMissionIdx:0;
   const _dotR=3,_dotGap=10;
-  const _dotsW=5*(_dotR*2+_dotGap)-_dotGap; // total width of 5 dots+gaps
+  const _dotsW=5*(_dotR*2+_dotGap)-_dotGap;
   let _missionTxt='';
   if(_wdone||_midx>=5)_missionTxt='WEEK COMPLETE \u2606';
   else if(activeMission)_missionTxt='MISSION '+(_midx+1)+'/5: '+activeMission.text;
@@ -5938,8 +6003,6 @@ function drawGameOver(){
     const _totalW=_dotsW+8+_txtW;
     const _startX=W/2-_totalW/2;
     const _rowY=PY+233;
-
-    // Draw 5 dots
     for(let _di=0;_di<5;_di++){
       const _dx=_startX+_di*(_dotR*2+_dotGap)+_dotR;
       const _done=_di<_midx,_cur=_di===_midx&&!_wdone;
@@ -5949,10 +6012,7 @@ function drawGameOver(){
       ctx.beginPath();ctx.arc(_dx,_rowY,_done||_cur?_dotR:_dotR-1,0,Math.PI*2);ctx.fill();
     }
     ctx.shadowBlur=0;
-
-    // Mission text after dots
     ctx.fillStyle=_wdone?'#4ade80':'#64748b';
-    // Truncate if too wide for remaining panel space
     const _maxTxtW=PX+PW-14-(_startX+_dotsW+8);
     let _mT=_missionTxt;
     while(_mT.length>8&&ctx.measureText(_mT).width>Math.max(60,_maxTxtW))_mT=_mT.slice(0,-1);
@@ -5976,7 +6036,7 @@ function drawGameOver(){
   ctx.fillText('\uD83D\uDCE4  SHARE MY RUN',W/2,shY+shH/2);
   ctx.textBaseline='alphabetic';ctx.restore();
 
-  // ── RETRY + MENU (PY+PH-54 = PY+326) ──
+  // ── RETRY + MENU ──
   const rbW=132,rbH=34,rbX=W/2-rbW-6,rbY=PY+PH-54;
   const mbW=132,mbH=34,mbX=W/2+6,mbY=PY+PH-54;
   if(!GC.goRetryGrad){

@@ -890,6 +890,12 @@ let _shownMechanics={}; // tracks which mechanic intro banners have been shown t
 // Personal best tracking
 let newRecordFlash=0; // frames to show NEW RECORD
 let hasPassedBest=false;
+// ── Run summary: coin count-up + bar toggle ────────────────────────────────
+let coinCountUpValue=0;  // animated earned-coins display (0 → sessionCoins)
+let coinCountUpTimer=0;  // frame counter driving the ease curve
+let coinCountUpDone=false; // true once animation reaches sessionCoins
+let barToggleTimer=0;    // frames elapsed after count-up; drives XP↔unlock toggle
+let barToggleMode='xp';  // 'xp' or 'unlock' — current bar display mode
 
 /* ══════════════════════════════════════════════
    CONTEXTUAL TUTORIAL SYSTEM
