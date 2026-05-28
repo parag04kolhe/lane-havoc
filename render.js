@@ -5786,7 +5786,6 @@ function drawRevive(){
 function drawGameOver(){
   const _finalScore=Math.floor(score);
   const isBest=_finalScore>=bestScore&&bestScore>0;
-  // PH=380 — clean, no clutter, no all-time bests block
   const PW=308,PH=380,PX=(W-PW)/2,PY=(H-PH)/2-20;
 
   // ── Animate coin count-up (runs every frame while on summary screen) ──
@@ -5794,20 +5793,16 @@ function drawGameOver(){
     coinCountUpTimer++;
     const _dur=90; // 1.5s at 60fps
     const _t=Math.min(1,coinCountUpTimer/_dur);
-    const _ease=1-Math.pow(1-_t,3); // ease-out cubic: fast start, slow settle
+    const _ease=1-Math.pow(1-_t,3); // ease-out cubic
     coinCountUpValue=Math.round(sessionCoins*_ease);
     if(_t>=1){coinCountUpDone=true;coinCountUpValue=sessionCoins;}
   }else{
-    // Tick the bar toggle timer after count-up completes
     barToggleTimer++;
-    // Determine which bar mode we're in (XP or unlock progress)
-    // Each mode holds for 240 frames (4s), with a 12-frame fade on entry
-    const _HOLD=240,_FADE=12;
     const _allShop=[...SKINS,...TRAILS,...BOOSTS];
     const _hasUnlock=_allShop.some(it=>!isOwned(it.id)&&it.price>0);
     if(_hasUnlock){
-      const _cyc=barToggleTimer%(_HOLD*2);
-      barToggleMode=_cyc<_HOLD?'xp':'unlock';
+      const _cyc=barToggleTimer%(240*2);
+      barToggleMode=_cyc<240?'xp':'unlock';
     }else{
       barToggleMode='xp';
     }
@@ -5823,7 +5818,7 @@ function drawGameOver(){
   ctx.fillStyle='#f8fafc';ctx.shadowColor='#4ade80';ctx.shadowBlur=16;
   ctx.fillText('RUN SUMMARY',W/2,PY+40);ctx.shadowBlur=0;
 
-  // ── NEW RECORD badge — only shown when it IS a new record ──
+  // ── NEW RECORD badge ──
   if(isBest){
     ctx.font="bold 10px 'Orbitron',sans-serif";ctx.fillStyle='#fbbf24';
     ctx.shadowColor='#fbbf24';ctx.shadowBlur=10;
@@ -5834,81 +5829,81 @@ function drawGameOver(){
   ctx.strokeStyle='rgba(255,255,255,0.08)';ctx.lineWidth=1;
   ctx.beginPath();ctx.moveTo(PX+16,PY+63);ctx.lineTo(PX+PW-16,PY+63);ctx.stroke();
 
-  // ── Score ──
+  // ── Score — label 12px, value 26px ──
+  // Layout: label right-aligned at W/2-8, value left-aligned at W/2+8
   const _scoreCol=isBest?'#fbbf24':'#f8fafc';
-  ctx.font="600 10px 'Rajdhani',sans-serif";ctx.fillStyle='#94a3b8';
-  ctx.textAlign='right';ctx.fillText('Score',W/2-4,PY+80);
-  ctx.font="900 22px 'Orbitron',impact,sans-serif";
+  ctx.font="600 12px 'Rajdhani',sans-serif";ctx.fillStyle='#94a3b8';
+  ctx.textAlign='right';ctx.textBaseline='middle';
+  ctx.fillText('Score',W/2-8,PY+83);
+  ctx.font="900 26px 'Orbitron',impact,sans-serif";
   ctx.fillStyle=_scoreCol;ctx.shadowColor=_scoreCol;ctx.shadowBlur=isBest?16:6;
-  ctx.textAlign='left';ctx.fillText(_finalScore,W/2+6,PY+81);ctx.shadowBlur=0;
+  ctx.textAlign='left';ctx.fillText(_finalScore,W/2+8,PY+83);ctx.shadowBlur=0;
+  ctx.textBaseline='alphabetic';
 
   // Divider under score
   ctx.strokeStyle='rgba(255,255,255,0.06)';ctx.lineWidth=1;
-  ctx.beginPath();ctx.moveTo(PX+16,PY+90);ctx.lineTo(PX+PW-16,PY+90);ctx.stroke();
+  ctx.beginPath();ctx.moveTo(PX+16,PY+100);ctx.lineTo(PX+PW-16,PY+100);ctx.stroke();
 
-  // ── Global Rank — run rank + all-time best ──
+  // ── Global Rank — 11px (was 9px × 1.2) ──
   if(lbRankLoading||lbMyEstimatedRank>0){
     ctx.save();ctx.textAlign='center';ctx.textBaseline='middle';
-    ctx.font="bold 9px 'Orbitron',sans-serif";
     if(lbRankLoading){
+      ctx.font="bold 11px 'Orbitron',sans-serif";
       const _rankPulse=0.45+Math.sin(frameCount*0.12)*0.45;
-      ctx.globalAlpha=_rankPulse;
-      ctx.fillStyle='#64748b';
-      ctx.fillText('\uD83C\uDF0D RANKING...',W/2,PY+97);
+      ctx.globalAlpha=_rankPulse;ctx.fillStyle='#64748b';
+      ctx.fillText('\uD83C\uDF0D RANKING...',W/2,PY+114);
     }else{
       const _isTop10=lbMyEstimatedRank<=10;
       if(_isTop10){ctx.shadowColor='#fbbf24';ctx.shadowBlur=14;}
       ctx.fillStyle=_isTop10?'#fbbf24':'#22d3ee';
       if(lbRunEstimatedRank>0&&lbRunEstimatedRank!==lbMyEstimatedRank){
-        ctx.font="bold 8.5px 'Orbitron',sans-serif";
-        ctx.fillText('\uD83C\uDF0D Rank #'+lbRunEstimatedRank+'  |  All-Time Best #'+lbMyEstimatedRank,W/2,PY+97);
+        ctx.font="bold 10px 'Orbitron',sans-serif";
+        ctx.fillText('\uD83C\uDF0D Rank #'+lbRunEstimatedRank+'  |  All-Time Best #'+lbMyEstimatedRank,W/2,PY+114);
       }else{
-        ctx.fillText('\uD83C\uDF0D All-Time Best: #'+lbMyEstimatedRank,W/2,PY+97);
+        ctx.font="bold 11px 'Orbitron',sans-serif";
+        ctx.fillText('\uD83C\uDF0D All-Time Best: #'+lbMyEstimatedRank,W/2,PY+114);
       }
       ctx.shadowBlur=0;
     }
     ctx.restore();
   }
 
-  // ── 3 key action stats (18px rows) ──
-  // Coins Earned shows animated count-up; colour brightens slightly while animating
+  // ── 2 stat rows: Best Streak + Coins — 12px labels, 12px values ──
+  // Rows spaced equally: first at PY+146, second at PY+176 (30px gap)
   const _coinAnimating=!coinCountUpDone;
   const _coinCol=_coinAnimating?'#fde68a':'#fbbf24';
   const stats=[
-    ['Near-Misses',  runNearMisses,                '#f97316'],
-    ['Best Streak',  runMaxCombo+'\u00d7',         '#ef4444'],
-    ['Coins Earned', '+'+coinCountUpValue,          _coinCol ],
+    ['Best Streak', runMaxCombo+'\u00d7', '#ef4444', false],
+    ['Coins',       '+'+coinCountUpValue,  _coinCol,  _coinAnimating],
   ];
-  stats.forEach(([k,v,c],i)=>{
-    const ry=PY+112+i*18;
-    ctx.font="600 10px 'Rajdhani',sans-serif";ctx.fillStyle='#94a3b8';ctx.textAlign='right';ctx.fillText(k,W/2-4,ry);
-    ctx.font="bold 10px 'Orbitron',sans-serif";ctx.fillStyle=c;
-    // Coin row: brief glow while counting, stronger glow on first frame done
-    if(i===2&&_coinAnimating){ctx.shadowColor='#fbbf24';ctx.shadowBlur=4;}
-    ctx.textAlign='left';ctx.fillText(v,W/2+6,ry);ctx.shadowBlur=0;
+  const _statY0=PY+146, _statGap=30;
+  stats.forEach(([k,v,c,glow],i)=>{
+    const ry=_statY0+i*_statGap;
+    ctx.font="600 12px 'Rajdhani',sans-serif";ctx.fillStyle='#94a3b8';
+    ctx.textAlign='right';ctx.textBaseline='middle';ctx.fillText(k,W/2-8,ry);
+    ctx.font="bold 12px 'Orbitron',sans-serif";ctx.fillStyle=c;
+    if(glow){ctx.shadowColor='#fbbf24';ctx.shadowBlur=5;}
+    ctx.textAlign='left';ctx.fillText(v,W/2+8,ry);ctx.shadowBlur=0;
   });
+  ctx.textBaseline='alphabetic';
 
-  // Divider
+  // Divider below stats
   ctx.strokeStyle='rgba(255,255,255,0.08)';ctx.lineWidth=1;
-  ctx.beginPath();ctx.moveTo(PX+16,PY+178);ctx.lineTo(PX+PW-16,PY+178);ctx.stroke();
+  ctx.beginPath();ctx.moveTo(PX+16,PY+200);ctx.lineTo(PX+PW-16,PY+200);ctx.stroke();
 
-  // ── Toggling bar row: XP progress ↔ unlock progress ──
-  // Fades in after count-up completes; toggles every 4s
+  // ── Toggling bar row: XP ↔ unlock (fades in after count-up) ──
   {
-    const _HOLD=240,_FADE=12;
-    // Compute fade-in alpha for the current mode
+    const _FADE=12;
     let _barAlpha=0;
     if(coinCountUpDone){
-      const _cyc=barToggleTimer%(_HOLD*2);
-      const _localT=_cyc<_HOLD?_cyc:_cyc-_HOLD;
+      const _cyc=barToggleTimer%(240*2);
+      const _localT=_cyc<240?_cyc:_cyc-240;
       _barAlpha=Math.min(1,_localT/_FADE);
     }
-
     ctx.save();ctx.globalAlpha=_barAlpha;ctx.textBaseline='middle';
-    const _barY=PY+191,_barH=6;
+    const _barY=PY+213,_barH=6;
 
     if(barToggleMode==='xp'){
-      // ── XP row: level · title [====bar====] +XP ──
       const _lvl=typeof driverLevel!=='undefined'?driverLevel:1;
       const _wXP=typeof weeklyXP!=='undefined'?weeklyXP:0;
       const _wXPT=typeof WEEKLY_XP_TARGET!=='undefined'?WEEKLY_XP_TARGET:5000;
@@ -5922,8 +5917,7 @@ function drawGameOver(){
       const _rW=_rightTxt?ctx.measureText(_rightTxt).width:0;
       const _barW=Math.max(24,PW-28-_lW-_rW-12);
       const _barX=PX+14+_lW+6;
-      ctx.textAlign='left';ctx.fillStyle='#fbbf24';
-      ctx.fillText(_leftTxt,PX+14,PY+194);
+      ctx.textAlign='left';ctx.fillStyle='#fbbf24';ctx.fillText(_leftTxt,PX+14,PY+216);
       ctx.fillStyle='rgba(255,255,255,0.08)';rr(_barX,_barY,_barW,_barH,3);ctx.fill();
       if(_wFill>0){
         ctx.fillStyle=_wFill>=1?'#4ade80':'#fbbf24';
@@ -5933,17 +5927,16 @@ function drawGameOver(){
       if(_rightTxt){
         ctx.textAlign='right';ctx.fillStyle='#4ade80';
         ctx.shadowColor='#22c55e';ctx.shadowBlur=5;
-        ctx.fillText(_rightTxt,PX+PW-14,PY+194);ctx.shadowBlur=0;
+        ctx.fillText(_rightTxt,PX+PW-14,PY+216);ctx.shadowBlur=0;
       }
     }else{
-      // ── Unlock progress row: 🎁 ITEM [====bar====] X/price ──
       const _allShop=[...SKINS,...TRAILS,...BOOSTS];
       const _uItem=_allShop.filter(it=>!isOwned(it.id)&&it.price>0)
         .sort((a,b)=>a.price-b.price)[0]||null;
       if(_uItem){
         const _fill=Math.min(1,coinBank/_uItem.price);
         const _ready=coinBank>=_uItem.price;
-        const _leftTxt='\uD83C\uDF81 '+_uItem.name; // 🎁
+        const _leftTxt='\uD83C\uDF81 '+_uItem.name;
         const _rightTxt=_ready?'READY!':(coinBank+'/'+_uItem.price);
         ctx.font="700 9px 'Rajdhani',sans-serif";
         const _lW=ctx.measureText(_leftTxt).width;
@@ -5952,7 +5945,7 @@ function drawGameOver(){
         const _barX=PX+14+_lW+6;
         ctx.textAlign='left';ctx.fillStyle=_ready?'#4ade80':'#94a3b8';
         if(_ready){ctx.shadowColor='#22c55e';ctx.shadowBlur=5;}
-        ctx.fillText(_leftTxt,PX+14,PY+194);ctx.shadowBlur=0;
+        ctx.fillText(_leftTxt,PX+14,PY+216);ctx.shadowBlur=0;
         ctx.fillStyle='rgba(255,255,255,0.08)';rr(_barX,_barY,_barW,_barH,3);ctx.fill();
         if(_fill>0){
           const _pc=_ready?'#4ade80':'#38bdf8';
@@ -5961,14 +5954,14 @@ function drawGameOver(){
         }
         ctx.textAlign='right';ctx.fillStyle=_ready?'#4ade80':'#64748b';
         if(_ready){ctx.shadowColor='#22c55e';ctx.shadowBlur=5;}
-        ctx.fillText(_rightTxt,PX+PW-14,PY+194);ctx.shadowBlur=0;
+        ctx.fillText(_rightTxt,PX+PW-14,PY+216);ctx.shadowBlur=0;
       }
     }
     ctx.textBaseline='alphabetic';
     ctx.restore();
   }
 
-  // ── Unlock nudge — only shown after count-up completes ──
+  // ── Unlock nudge — fades in after count-up ──
   if(coinCountUpDone){
     const _allItems=[...SKINS,...TRAILS,...BOOSTS];
     const _nextItem=_allItems.find(it=>!isOwned(it.id)&&it.price>0&&coinBank>=it.price*0.7);
@@ -5977,16 +5970,16 @@ function drawGameOver(){
       ctx.font="600 8px 'Rajdhani',sans-serif";
       if(coinBank>=_nextItem.price){
         ctx.fillStyle='#4ade80';ctx.shadowColor='#22c55e';ctx.shadowBlur=5;
-        ctx.fillText('\u2713 Unlock '+_nextItem.name+' now! ('+_nextItem.price+' coins)',W/2,PY+220);ctx.shadowBlur=0;
+        ctx.fillText('\u2713 Unlock '+_nextItem.name+' now! ('+_nextItem.price+' coins)',W/2,PY+236);ctx.shadowBlur=0;
       }else{
         ctx.fillStyle='#94a3b8';
-        ctx.fillText((_nextItem.price-coinBank)+' more coins to unlock '+_nextItem.name,W/2,PY+220);
+        ctx.fillText((_nextItem.price-coinBank)+' more coins to unlock '+_nextItem.name,W/2,PY+236);
       }
       ctx.restore();
     }
   }
 
-  // ── Mission compact row — dots inline with text ──
+  // ── Mission compact row ──
   ctx.save();ctx.textAlign='left';ctx.textBaseline='middle';
   const _wdone=typeof weeklyAllDone!=='undefined'&&weeklyAllDone;
   const _midx=typeof weeklyMissionIdx!=='undefined'?weeklyMissionIdx:0;
@@ -5995,21 +5988,19 @@ function drawGameOver(){
   let _missionTxt='';
   if(_wdone||_midx>=5)_missionTxt='WEEK COMPLETE \u2606';
   else if(activeMission)_missionTxt='MISSION '+(_midx+1)+'/5: '+activeMission.text;
-  else _missionTxt='';
-
   if(_missionTxt){
     ctx.font="600 8px 'Rajdhani',sans-serif";
     const _txtW=ctx.measureText(_missionTxt).width;
     const _totalW=_dotsW+8+_txtW;
     const _startX=W/2-_totalW/2;
-    const _rowY=PY+233;
+    const _rowY=PY+250;
     for(let _di=0;_di<5;_di++){
       const _dx=_startX+_di*(_dotR*2+_dotGap)+_dotR;
-      const _done=_di<_midx,_cur=_di===_midx&&!_wdone;
-      ctx.fillStyle=_done?'#fbbf24':_cur?'#86efac':'#1e293b';
-      ctx.shadowColor=_done?'#f59e0b':_cur?'#4ade80':'transparent';
-      ctx.shadowBlur=_done||_cur?4:0;
-      ctx.beginPath();ctx.arc(_dx,_rowY,_done||_cur?_dotR:_dotR-1,0,Math.PI*2);ctx.fill();
+      const _dn=_di<_midx,_cur=_di===_midx&&!_wdone;
+      ctx.fillStyle=_dn?'#fbbf24':_cur?'#86efac':'#1e293b';
+      ctx.shadowColor=_dn?'#f59e0b':_cur?'#4ade80':'transparent';
+      ctx.shadowBlur=_dn||_cur?4:0;
+      ctx.beginPath();ctx.arc(_dx,_rowY,_dn||_cur?_dotR:_dotR-1,0,Math.PI*2);ctx.fill();
     }
     ctx.shadowBlur=0;
     ctx.fillStyle=_wdone?'#4ade80':'#64748b';
@@ -6021,12 +6012,12 @@ function drawGameOver(){
   }
   ctx.restore();
 
-  // Divider above buttons
+  // Divider above in-panel buttons
   ctx.strokeStyle='rgba(255,255,255,0.07)';ctx.lineWidth=1;
-  ctx.beginPath();ctx.moveTo(PX+16,PY+246);ctx.lineTo(PX+PW-16,PY+246);ctx.stroke();
+  ctx.beginPath();ctx.moveTo(PX+16,PY+263);ctx.lineTo(PX+PW-16,PY+263);ctx.stroke();
 
   // ── SHARE button ──
-  const shW=168,shH=28,shX=W/2-shW/2,shY=PY+254;
+  const shW=168,shH=28,shX=W/2-shW/2,shY=PY+271;
   ctx.save();
   ctx.fillStyle='rgba(6,20,50,0.92)';rr(shX,shY,shW,shH,9);ctx.fill();
   ctx.strokeStyle='#38bdf8';ctx.lineWidth=1.6;ctx.shadowColor='#38bdf8';ctx.shadowBlur=10;
@@ -6066,31 +6057,62 @@ function drawGameOver(){
   ctx.fillText('\u2302  MENU',mbX+mbW/2,mbY+mbH/2);
   ctx.restore();
   ctx.textAlign='left';
-  _drawGoBtns();
+  _drawGoBtns(PY+PH);
 }
 
-function _drawGoBtns(){
-  // Shop button (left)
-  const sbW=100,sbH=28,sbX=W/2-106,sbY=H-44;
+function _drawGoBtns(panelBottom){
+  // Shop + Board buttons stacked vertically, centered horizontally,
+  // floating at the vertical midpoint of the space below the summary panel.
+  const _pb=panelBottom||H-120;
+  const _spaceBelow=H-_pb;
+  const _btnW=148,_btnH=30,_btnGap=10;
+  const _stackH=_btnH*2+_btnGap;
+  const _stackTop=_pb+(_spaceBelow-_stackH)/2;
+  const _btnX=W/2-_btnW/2;
+  const _shopY=_stackTop;
+  const _boardY=_stackTop+_btnH+_btnGap;
+
+  // ── Can the player buy anything? ──
+  const _canBuy=[...SKINS,...TRAILS,...BOOSTS].some(it=>!isOwned(it.id)&&it.price>0&&coinBank>=it.price);
+  const _shopPulse=_canBuy?(0.70+fastSin(frameCount*0.10)*0.30):1.0;
+
+  // Shop button
   ctx.save();
-  ctx.fillStyle='rgba(15,20,40,0.90)';rr(sbX,sbY,sbW,sbH,8);ctx.fill();
-  ctx.strokeStyle='#fbbf24';ctx.lineWidth=1.5;
-  ctx.shadowColor='#f59e0b';ctx.shadowBlur=10;
-  rr(sbX,sbY,sbW,sbH,8);ctx.stroke();ctx.shadowBlur=0;
-  ctx.fillStyle='#fbbf24';ctx.font="bold 10px 'Orbitron',sans-serif";
+  ctx.fillStyle='rgba(15,20,40,0.92)';rr(_btnX,_shopY,_btnW,_btnH,8);ctx.fill();
+  if(_canBuy){
+    // Highlighted: brighter border + pulsing outer glow
+    ctx.shadowColor='#fbbf24';ctx.shadowBlur=18*_shopPulse;
+    ctx.strokeStyle='#fde68a';ctx.lineWidth=2;
+  }else{
+    ctx.strokeStyle='#fbbf24';ctx.lineWidth=1.5;
+    ctx.shadowColor='#f59e0b';ctx.shadowBlur=10;
+  }
+  rr(_btnX,_shopY,_btnW,_btnH,8);ctx.stroke();ctx.shadowBlur=0;
+  ctx.fillStyle=_canBuy?'#fde68a':'#fbbf24';
+  ctx.font="bold 10px 'Orbitron',sans-serif";
   ctx.textAlign='center';ctx.textBaseline='middle';
-  ctx.fillText('★  SHOP',sbX+sbW/2,sbY+sbH/2);
+  ctx.fillText('★  SHOP',_btnX+_btnW/2,_shopY+_btnH/2);
+  if(_canBuy){
+    // Small "UNLOCK READY" chip at top-right corner of button
+    ctx.font="600 7px 'Rajdhani',sans-serif";
+    ctx.fillStyle='#fbbf24';
+    const _chip='● UNLOCK READY';
+    const _cw=ctx.measureText(_chip).width+8;
+    ctx.fillStyle='rgba(251,191,36,0.18)';rr(_btnX+_btnW-_cw-4,_shopY-7,_cw,12,3);ctx.fill();
+    ctx.fillStyle='#fbbf24';ctx.textBaseline='middle';
+    ctx.fillText(_chip,_btnX+_btnW-_cw/2-4,_shopY-1);
+  }
   ctx.restore();
-  // Leaderboard button (right)
-  const lbW=100,lbH=28,lbX=W/2+6,lbY=H-44;
+
+  // Board button
   ctx.save();
-  ctx.fillStyle='rgba(15,20,40,0.90)';rr(lbX,lbY,lbW,lbH,8);ctx.fill();
+  ctx.fillStyle='rgba(15,20,40,0.90)';rr(_btnX,_boardY,_btnW,_btnH,8);ctx.fill();
   ctx.strokeStyle='#a78bfa';ctx.lineWidth=1.5;
   ctx.shadowColor='#8b5cf6';ctx.shadowBlur=10;
-  rr(lbX,lbY,lbW,lbH,8);ctx.stroke();ctx.shadowBlur=0;
+  rr(_btnX,_boardY,_btnW,_btnH,8);ctx.stroke();ctx.shadowBlur=0;
   ctx.fillStyle='#c4b5fd';ctx.font="bold 10px 'Orbitron',sans-serif";
   ctx.textAlign='center';ctx.textBaseline='middle';
-  ctx.fillText('🏆 BOARD',lbX+lbW/2,lbY+lbH/2);
+  ctx.fillText('\uD83C\uDFC6  BOARD',_btnX+_btnW/2,_boardY+_btnH/2);
   ctx.restore();
 }
 

@@ -1399,8 +1399,8 @@ if(gst===ST.GAMEOVER){
     const _GOpy=(H-380)/2-20,_GOph=380;
     const _rbX=W/2-132-6,_rbY=_GOpy+_GOph-54,_rbW=132,_rbH=34;
     const _mbX=W/2+6,_mbY=_rbY,_mbW=132,_mbH=34;
-    // SHARE button
-    const _shW=168,_shH=28,_shX=W/2-84,_shY=_GOpy+250;
+    // SHARE button (updated Y to match new layout)
+    const _shW=168,_shH=28,_shX=W/2-84,_shY=_GOpy+271;
     if(relX>=_shX&&relX<=_shX+_shW&&relY>=_shY&&relY<=_shY+_shH){
       _doShareRunSummary();return;
     }
@@ -1412,11 +1412,15 @@ if(gst===ST.GAMEOVER){
       startMenuMusic();
       return;
     }
-    // Shop button (left of bottom pair)
-    const _sbY=H-44,_sbH=28;
-    if(relX>=W/2-106&&relX<=W/2-6&&relY>=_sbY&&relY<=_sbY+_sbH){doShop();return;}
-    // Leaderboard button (right of bottom pair)
-    if(relX>=W/2+6&&relX<=W/2+106&&relY>=_sbY&&relY<=_sbY+_sbH){_llOpenLeaderboard();return;}
+    // Shop + Board: stacked vertically, centered — mirrors _drawGoBtns()
+    const _gbPb=_GOpy+_GOph;
+    const _gbSpace=H-_gbPb;
+    const _gbBtnW=148,_gbBtnH=30,_gbBtnGap=10;
+    const _gbStackH=_gbBtnH*2+_gbBtnGap;
+    const _gbTop=_gbPb+(_gbSpace-_gbStackH)/2;
+    const _gbX=W/2-_gbBtnW/2;
+    if(relX>=_gbX&&relX<=_gbX+_gbBtnW&&relY>=_gbTop&&relY<=_gbTop+_gbBtnH){doShop();return;}
+    if(relX>=_gbX&&relX<=_gbX+_gbBtnW&&relY>=_gbTop+_gbBtnH+_gbBtnGap&&relY<=_gbTop+_gbStackH){_llOpenLeaderboard();return;}
     return;
   }
 
@@ -1672,8 +1676,8 @@ if(gst===ST.GAMEOVER && isTap){
       const _GOpy=(H-380)/2-20, _GOph=380;
       const _rbX=W/2-132-6, _rbY=_GOpy+_GOph-54, _rbW=132, _rbH=34;
       const _mbX=W/2+6, _mbY=_rbY, _mbW=132, _mbH=34;
-      // SHARE button
-      const _shW=168,_shH=28,_shX=W/2-84,_shY=_GOpy+250;
+      // SHARE button (updated Y to match new layout)
+      const _shW=168,_shH=28,_shX=W/2-84,_shY=_GOpy+271;
       if(relX>=_shX&&relX<=_shX+_shW&&relY>=_shY&&relY<=_shY+_shH){
         _doShareRunSummary();e.stopPropagation();return;
       }
@@ -1687,11 +1691,15 @@ if(gst===ST.GAMEOVER && isTap){
         startMenuMusic();
         e.stopPropagation();return;
       }
-      // Shop button (left of bottom pair)
-      const _sbY=H-44,_sbH=28;
-      if(relX>=W/2-106&&relX<=W/2-6&&relY>=_sbY&&relY<=_sbY+_sbH){doShop();e.stopPropagation();return;}
-      // Leaderboard button (right of bottom pair)
-      if(relX>=W/2+6&&relX<=W/2+106&&relY>=_sbY&&relY<=_sbY+_sbH){_llOpenLeaderboard();e.stopPropagation();return;}
+      // Shop + Board: stacked vertically, centered — mirrors _drawGoBtns()
+      const _gbPb=_GOpy+_GOph;
+      const _gbSpace=H-_gbPb;
+      const _gbBtnW=148,_gbBtnH=30,_gbBtnGap=10;
+      const _gbStackH=_gbBtnH*2+_gbBtnGap;
+      const _gbTop=_gbPb+(_gbSpace-_gbStackH)/2;
+      const _gbX=W/2-_gbBtnW/2;
+      if(relX>=_gbX&&relX<=_gbX+_gbBtnW&&relY>=_gbTop&&relY<=_gbTop+_gbBtnH){doShop();e.stopPropagation();return;}
+      if(relX>=_gbX&&relX<=_gbX+_gbBtnW&&relY>=_gbTop+_gbBtnH+_gbBtnGap&&relY<=_gbTop+_gbStackH){_llOpenLeaderboard();e.stopPropagation();return;}
       e.stopPropagation(); return;
     }
     if(gst!==ST.INTRO&&gst!==ST.GAMEOVER&&gst!==ST.SPLASH) doStart();
