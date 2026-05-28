@@ -1396,11 +1396,11 @@ canvas.addEventListener('mousedown', e=>{
 
   // GAMEOVER screen
 if(gst===ST.GAMEOVER){
-    const _GOpy=(H-380)/2-20,_GOph=380;
-    const _rbX=W/2-132-6,_rbY=_GOpy+_GOph-54,_rbW=132,_rbH=34;
-    const _mbX=W/2+6,_mbY=_rbY,_mbW=132,_mbH=34;
-    // SHARE button (updated Y to match new layout)
-    const _shW=168,_shH=28,_shX=W/2-84,_shY=_GOpy+271;
+    const _GOpy=(H-390)/2-20,_GOph=390;
+    const _rbX=W/2-132-6,_rbY=_GOpy+_GOph-52,_rbW=132,_rbH=36;
+    const _mbX=W/2+6,_mbY=_rbY,_mbW=132,_mbH=36;
+    // SHARE button — matches new layout (shY=PY+274, shW=180, shH=32)
+    const _shW=180,_shH=32,_shX=W/2-90,_shY=_GOpy+274;
     if(relX>=_shX&&relX<=_shX+_shW&&relY>=_shY&&relY<=_shY+_shH){
       _doShareRunSummary();return;
     }
@@ -1673,11 +1673,11 @@ canvas.addEventListener('touchend', e=>{
     if(gst===ST.GAMEOVER && relY>H-56 && relX>=W/2+6 && relX<=W/2+106){ _llOpenLeaderboard(); return; }
     // GAMEOVER: RETRY and MENU buttons
 if(gst===ST.GAMEOVER && isTap){
-      const _GOpy=(H-380)/2-20, _GOph=380;
-      const _rbX=W/2-132-6, _rbY=_GOpy+_GOph-54, _rbW=132, _rbH=34;
-      const _mbX=W/2+6, _mbY=_rbY, _mbW=132, _mbH=34;
-      // SHARE button (updated Y to match new layout)
-      const _shW=168,_shH=28,_shX=W/2-84,_shY=_GOpy+271;
+      const _GOpy=(H-390)/2-20, _GOph=390;
+      const _rbX=W/2-132-6, _rbY=_GOpy+_GOph-52, _rbW=132, _rbH=36;
+      const _mbX=W/2+6, _mbY=_rbY, _mbW=132, _mbH=36;
+      // SHARE button — matches new layout (shY=PY+274, shW=180, shH=32)
+      const _shW=180,_shH=32,_shX=W/2-90,_shY=_GOpy+274;
       if(relX>=_shX&&relX<=_shX+_shW&&relY>=_shY&&relY<=_shY+_shH){
         _doShareRunSummary();e.stopPropagation();return;
       }

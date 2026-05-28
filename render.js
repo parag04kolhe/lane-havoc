@@ -4249,9 +4249,9 @@ function drawStatsScreen(){
   ctx.save();ctx.strokeStyle='rgba(74,222,128,0.18)';ctx.lineWidth=1;
   ctx.beginPath();ctx.moveTo(CX+16,_achTitleY+14);ctx.lineTo(CX+CW-16,_achTitleY+14);ctx.stroke();ctx.restore();
 
-  // ── Achievement rows (10 × 21px) — descriptive names ──
+  // ── Achievement rows (10 × 19px) — descriptive names ──
   const _achStartY=_achTitleY+20;
-  const _rowH=21;
+  const _rowH=19;
   const _unlocked=typeof unlockedAchievements!=='undefined'?unlockedAchievements:[];
   (typeof ACHIEVEMENTS!=='undefined'?ACHIEVEMENTS:[]).forEach((a,i)=>{
     const ry=_achStartY+i*_rowH;
@@ -4285,6 +4285,50 @@ function drawStatsScreen(){
     }
     ctx.restore();
   });
+
+  // ── Weekly Missions compact row ──
+  {
+    const _achEnd=_achStartY+(typeof ACHIEVEMENTS!=='undefined'?ACHIEVEMENTS.length:0)*_rowH;
+    const _mRowY=_achEnd+14;
+    const _wdone=typeof weeklyAllDone!=='undefined'&&weeklyAllDone;
+    const _midx=typeof weeklyMissionIdx!=='undefined'?weeklyMissionIdx:0;
+    // Section divider
+    ctx.save();ctx.strokeStyle='rgba(74,222,128,0.14)';ctx.lineWidth=1;
+    ctx.beginPath();ctx.moveTo(CX+16,_achEnd+4);ctx.lineTo(CX+CW-16,_achEnd+4);ctx.stroke();
+    // "MISSIONS" label + 5 dots + mission text on one line
+    const _dotR=4,_dotGap=10;
+    const _dotsW=5*(_dotR*2+_dotGap)-_dotGap;
+    const _labelTxt='MISSIONS';
+    ctx.font="700 10px 'Rajdhani',sans-serif";
+    ctx.textAlign='left';ctx.textBaseline='middle';
+    ctx.fillStyle='#4ade80';ctx.shadowColor='#22c55e';ctx.shadowBlur=6;
+    ctx.fillText(_labelTxt,CX+16,_mRowY);ctx.shadowBlur=0;
+    const _lW=ctx.measureText(_labelTxt).width;
+    const _dotsX=CX+16+_lW+10;
+    for(let _di=0;_di<5;_di++){
+      const _dx=_dotsX+_di*(_dotR*2+_dotGap)+_dotR;
+      const _dn=_di<_midx,_cur=_di===_midx&&!_wdone;
+      ctx.fillStyle=_dn?'#fbbf24':_cur?'#86efac':'#1e293b';
+      ctx.shadowColor=_dn?'#f59e0b':_cur?'#4ade80':'transparent';
+      ctx.shadowBlur=_dn||_cur?5:0;
+      ctx.beginPath();ctx.arc(_dx,_mRowY,_dn||_cur?_dotR:_dotR-1,0,Math.PI*2);ctx.fill();
+    }
+    ctx.shadowBlur=0;
+    let _mTxt='';
+    if(_wdone||_midx>=5)_mTxt='WEEK COMPLETE ☆';
+    else if(typeof activeMission!=='undefined'&&activeMission)_mTxt='M'+(_midx+1)+'/5: '+activeMission.text;
+    if(_mTxt){
+      const _txtX=_dotsX+_dotsW+10;
+      const _maxW=CX+CW-16-_txtX;
+      ctx.font="600 10px 'Rajdhani',sans-serif";
+      ctx.fillStyle=_wdone?'#4ade80':'#64748b';
+      let _mt=_mTxt;
+      while(_mt.length>4&&ctx.measureText(_mt).width>_maxW)_mt=_mt.slice(0,-1);
+      if(_mt!==_mTxt)_mt=_mt.trim()+'…';
+      ctx.textAlign='left';ctx.fillText(_mt,_txtX,_mRowY);
+    }
+    ctx.restore();
+  }
 
   // ── Footer ──
   const footY=CY+cardH-44;
@@ -5786,250 +5830,170 @@ function drawRevive(){
 function drawGameOver(){
   const _finalScore=Math.floor(score);
   const isBest=_finalScore>=bestScore&&bestScore>0;
-  const PW=308,PH=380,PX=(W-PW)/2,PY=(H-PH)/2-20;
+  const PW=308,PH=390,PX=(W-PW)/2,PY=(H-PH)/2-20;
 
-  // ── Animate coin count-up (runs every frame while on summary screen) ──
+  // ── Animate coin count-up — 1.5s at 60fps ──
   if(!coinCountUpDone){
     coinCountUpTimer++;
-    const _dur=90; // 1.5s at 60fps
+    const _dur=90;
     const _t=Math.min(1,coinCountUpTimer/_dur);
-    const _ease=1-Math.pow(1-_t,3); // ease-out cubic
+    const _ease=1-Math.pow(1-_t,3);
     coinCountUpValue=Math.round(sessionCoins*_ease);
     if(_t>=1){coinCountUpDone=true;coinCountUpValue=sessionCoins;}
   }else{
     barToggleTimer++;
-    const _allShop=[...SKINS,...TRAILS,...BOOSTS];
-    const _hasUnlock=_allShop.some(it=>!isOwned(it.id)&&it.price>0);
-    if(_hasUnlock){
-      const _cyc=barToggleTimer%(240*2);
-      barToggleMode=_cyc<240?'xp':'unlock';
-    }else{
-      barToggleMode='xp';
-    }
   }
 
   ctx.fillStyle='rgba(0,0,0,0.75)';ctx.fillRect(0,0,W,H);
   const _panelCol=isBest?'#fbbf24':'#ef4444';
   drawGlassPanel(PX,PY,PW,PH,16,_panelCol);
-  ctx.textAlign='center';
+  ctx.textAlign='center';ctx.textBaseline='middle';
 
-  // ── Title ──
-  ctx.font="900 20px 'Orbitron',impact,sans-serif";
-  ctx.fillStyle='#f8fafc';ctx.shadowColor='#4ade80';ctx.shadowBlur=16;
-  ctx.fillText('RUN SUMMARY',W/2,PY+40);ctx.shadowBlur=0;
-
-  // ── NEW RECORD badge ──
+  // ── Title: large personal-best badge OR reactive one-liner ──
   if(isBest){
-    ctx.font="bold 10px 'Orbitron',sans-serif";ctx.fillStyle='#fbbf24';
-    ctx.shadowColor='#fbbf24';ctx.shadowBlur=10;
-    ctx.fillText('\u2B50 NEW PERSONAL BEST!',W/2,PY+56);ctx.shadowBlur=0;
+    ctx.font="900 18px 'Orbitron',impact,sans-serif";
+    ctx.fillStyle='#fbbf24';ctx.shadowColor='#fbbf24';ctx.shadowBlur=22;
+    ctx.fillText('\u2B50 NEW PERSONAL BEST!',W/2,PY+34);ctx.shadowBlur=0;
+  }else{
+    let _rt,_rc;
+    if(_finalScore<100){_rt='WIPEOUT!';_rc='#ef4444';}
+    else if(_finalScore<600){_rt='NICE RUN.';_rc='#94a3b8';}
+    else if(_finalScore<1500){_rt='SOLID RUN.';_rc='#22d3ee';}
+    else{_rt='BEAST RUN.';_rc='#4ade80';}
+    ctx.font="900 18px 'Orbitron',impact,sans-serif";
+    ctx.fillStyle=_rc;ctx.shadowColor=_rc;ctx.shadowBlur=14;
+    ctx.fillText(_rt,W/2,PY+34);ctx.shadowBlur=0;
   }
 
   // Divider
+  ctx.textBaseline='alphabetic';
   ctx.strokeStyle='rgba(255,255,255,0.08)';ctx.lineWidth=1;
-  ctx.beginPath();ctx.moveTo(PX+16,PY+63);ctx.lineTo(PX+PW-16,PY+63);ctx.stroke();
+  ctx.beginPath();ctx.moveTo(PX+16,PY+50);ctx.lineTo(PX+PW-16,PY+50);ctx.stroke();
 
-  // ── Score — label 12px, value 26px ──
-  // Layout: label right-aligned at W/2-8, value left-aligned at W/2+8
+  // ── Score — small caption above, large hero number below ──
   const _scoreCol=isBest?'#fbbf24':'#f8fafc';
-  ctx.font="600 12px 'Rajdhani',sans-serif";ctx.fillStyle='#94a3b8';
-  ctx.textAlign='right';ctx.textBaseline='middle';
-  ctx.fillText('Score',W/2-8,PY+83);
-  ctx.font="900 26px 'Orbitron',impact,sans-serif";
-  ctx.fillStyle=_scoreCol;ctx.shadowColor=_scoreCol;ctx.shadowBlur=isBest?16:6;
-  ctx.textAlign='left';ctx.fillText(_finalScore,W/2+8,PY+83);ctx.shadowBlur=0;
+  ctx.font="600 11px 'Rajdhani',sans-serif";ctx.fillStyle='#475569';
+  ctx.textAlign='center';ctx.textBaseline='alphabetic';
+  ctx.fillText('SCORE',W/2,PY+68);
+  ctx.font="900 30px 'Orbitron',impact,sans-serif";
+  ctx.fillStyle=_scoreCol;ctx.shadowColor=_scoreCol;ctx.shadowBlur=isBest?20:8;
+  ctx.textBaseline='middle';ctx.fillText(_finalScore,W/2,PY+92);ctx.shadowBlur=0;
   ctx.textBaseline='alphabetic';
 
   // Divider under score
   ctx.strokeStyle='rgba(255,255,255,0.06)';ctx.lineWidth=1;
-  ctx.beginPath();ctx.moveTo(PX+16,PY+100);ctx.lineTo(PX+PW-16,PY+100);ctx.stroke();
+  ctx.beginPath();ctx.moveTo(PX+16,PY+114);ctx.lineTo(PX+PW-16,PY+114);ctx.stroke();
 
-  // ── Global Rank — 11px (was 9px × 1.2) ──
+  // ── Global Rank ──
   if(lbRankLoading||lbMyEstimatedRank>0){
     ctx.save();ctx.textAlign='center';ctx.textBaseline='middle';
     if(lbRankLoading){
-      ctx.font="bold 11px 'Orbitron',sans-serif";
+      ctx.font="bold 13px 'Orbitron',sans-serif";
       const _rankPulse=0.45+Math.sin(frameCount*0.12)*0.45;
       ctx.globalAlpha=_rankPulse;ctx.fillStyle='#64748b';
-      ctx.fillText('\uD83C\uDF0D RANKING...',W/2,PY+114);
+      ctx.fillText('\uD83C\uDF0D RANKING...',W/2,PY+130);
     }else{
       const _isTop10=lbMyEstimatedRank<=10;
       if(_isTop10){ctx.shadowColor='#fbbf24';ctx.shadowBlur=14;}
       ctx.fillStyle=_isTop10?'#fbbf24':'#22d3ee';
       if(lbRunEstimatedRank>0&&lbRunEstimatedRank!==lbMyEstimatedRank){
-        ctx.font="bold 10px 'Orbitron',sans-serif";
-        ctx.fillText('\uD83C\uDF0D Rank #'+lbRunEstimatedRank+'  |  All-Time Best #'+lbMyEstimatedRank,W/2,PY+114);
+        ctx.font="bold 12px 'Orbitron',sans-serif";
+        ctx.fillText('\uD83C\uDF0D Rank #'+lbRunEstimatedRank+'  |  Best #'+lbMyEstimatedRank,W/2,PY+130);
       }else{
-        ctx.font="bold 11px 'Orbitron',sans-serif";
-        ctx.fillText('\uD83C\uDF0D All-Time Best: #'+lbMyEstimatedRank,W/2,PY+114);
+        ctx.font="bold 13px 'Orbitron',sans-serif";
+        ctx.fillText('\uD83C\uDF0D All-Time Best: #'+lbMyEstimatedRank,W/2,PY+130);
       }
       ctx.shadowBlur=0;
     }
     ctx.restore();
   }
 
-  // ── 2 stat rows: Best Streak + Coins — 12px labels, 12px values ──
-  // Rows spaced equally: first at PY+146, second at PY+176 (30px gap)
+  // Divider
+  ctx.strokeStyle='rgba(255,255,255,0.06)';ctx.lineWidth=1;
+  ctx.beginPath();ctx.moveTo(PX+16,PY+146);ctx.lineTo(PX+PW-16,PY+146);ctx.stroke();
+
+  // ── Best Streak row — label 14px Rajdhani / value 18px Orbitron ──
+  const _strY=PY+172;
+  ctx.font="600 14px 'Rajdhani',sans-serif";ctx.fillStyle='#94a3b8';
+  ctx.textAlign='right';ctx.textBaseline='middle';
+  ctx.fillText('Best Streak',W/2-10,_strY);
+  ctx.font="bold 18px 'Orbitron',sans-serif";ctx.fillStyle='#ef4444';
+  ctx.shadowColor='#ef4444';ctx.shadowBlur=6;
+  ctx.textAlign='left';ctx.fillText(runMaxCombo+'\u00d7',W/2+10,_strY);ctx.shadowBlur=0;
+
+  // ── Coins row — pops and glows during 1.5s count-up animation ──
   const _coinAnimating=!coinCountUpDone;
-  const _coinCol=_coinAnimating?'#fde68a':'#fbbf24';
-  const stats=[
-    ['Best Streak', runMaxCombo+'\u00d7', '#ef4444', false],
-    ['Coins',       '+'+coinCountUpValue,  _coinCol,  _coinAnimating],
-  ];
-  const _statY0=PY+146, _statGap=30;
-  stats.forEach(([k,v,c,glow],i)=>{
-    const ry=_statY0+i*_statGap;
-    ctx.font="600 12px 'Rajdhani',sans-serif";ctx.fillStyle='#94a3b8';
-    ctx.textAlign='right';ctx.textBaseline='middle';ctx.fillText(k,W/2-8,ry);
-    ctx.font="bold 12px 'Orbitron',sans-serif";ctx.fillStyle=c;
-    if(glow){ctx.shadowColor='#fbbf24';ctx.shadowBlur=5;}
-    ctx.textAlign='left';ctx.fillText(v,W/2+8,ry);ctx.shadowBlur=0;
-  });
+  const _coinY=PY+210;
+  ctx.font="600 14px 'Rajdhani',sans-serif";ctx.fillStyle='#94a3b8';
+  ctx.textAlign='right';ctx.textBaseline='middle';
+  ctx.fillText('Coins',W/2-10,_coinY);
+  if(_coinAnimating){
+    // Pop effect: pulsing scale + strong glow to catch player attention
+    const _pulse=1.0+fastSin(frameCount*0.30)*0.13;
+    const _fs=Math.round(26*_pulse);
+    const _glow=16+fastSin(frameCount*0.22)*9;
+    ctx.save();
+    ctx.font="bold "+_fs+"px 'Orbitron',sans-serif";
+    ctx.fillStyle='#fde68a';ctx.shadowColor='#fbbf24';ctx.shadowBlur=_glow;
+    ctx.textAlign='left';ctx.textBaseline='middle';
+    ctx.fillText('+'+coinCountUpValue,W/2+10,_coinY);
+    ctx.restore();
+  }else{
+    ctx.font="bold 18px 'Orbitron',sans-serif";ctx.fillStyle='#fbbf24';
+    ctx.textAlign='left';ctx.textBaseline='middle';
+    ctx.fillText('+'+coinCountUpValue,W/2+10,_coinY);
+  }
   ctx.textBaseline='alphabetic';
 
   // Divider below stats
   ctx.strokeStyle='rgba(255,255,255,0.08)';ctx.lineWidth=1;
-  ctx.beginPath();ctx.moveTo(PX+16,PY+200);ctx.lineTo(PX+PW-16,PY+200);ctx.stroke();
+  ctx.beginPath();ctx.moveTo(PX+16,PY+234);ctx.lineTo(PX+PW-16,PY+234);ctx.stroke();
 
-  // ── Toggling bar row: XP ↔ unlock (fades in after count-up) ──
+  // ── XP bar — just "XP" label + progress bar, nothing else ──
   {
-    const _FADE=12;
-    let _barAlpha=0;
-    if(coinCountUpDone){
-      const _cyc=barToggleTimer%(240*2);
-      const _localT=_cyc<240?_cyc:_cyc-240;
-      _barAlpha=Math.min(1,_localT/_FADE);
-    }
-    ctx.save();ctx.globalAlpha=_barAlpha;ctx.textBaseline='middle';
-    const _barY=PY+213,_barH=6;
-
-    if(barToggleMode==='xp'){
-      const _lvl=typeof driverLevel!=='undefined'?driverLevel:1;
-      const _wXP=typeof weeklyXP!=='undefined'?weeklyXP:0;
-      const _wXPT=typeof WEEKLY_XP_TARGET!=='undefined'?WEEKLY_XP_TARGET:5000;
-      const _xpG=typeof _lastXpGained!=='undefined'?_lastXpGained:0;
-      const _title=typeof getDriverTitle==='function'?getDriverTitle():'ROOKIE';
-      const _wFill=Math.min(1,_wXPT>0?_wXP/_wXPT:0);
-      const _leftTxt='\u2B50 LVL '+_lvl+' \u00B7 '+_title;
-      const _rightTxt=_xpG>0?'+'+_xpG+' XP':'';
-      ctx.font="700 9px 'Rajdhani',sans-serif";
-      const _lW=ctx.measureText(_leftTxt).width;
-      const _rW=_rightTxt?ctx.measureText(_rightTxt).width:0;
-      const _barW=Math.max(24,PW-28-_lW-_rW-12);
-      const _barX=PX+14+_lW+6;
-      ctx.textAlign='left';ctx.fillStyle='#fbbf24';ctx.fillText(_leftTxt,PX+14,PY+216);
-      ctx.fillStyle='rgba(255,255,255,0.08)';rr(_barX,_barY,_barW,_barH,3);ctx.fill();
-      if(_wFill>0){
-        ctx.fillStyle=_wFill>=1?'#4ade80':'#fbbf24';
-        ctx.shadowColor=_wFill>=1?'#22c55e':'#f59e0b';ctx.shadowBlur=4;
-        rr(_barX,_barY,_barW*_wFill,_barH,3);ctx.fill();ctx.shadowBlur=0;
-      }
-      if(_rightTxt){
-        ctx.textAlign='right';ctx.fillStyle='#4ade80';
-        ctx.shadowColor='#22c55e';ctx.shadowBlur=5;
-        ctx.fillText(_rightTxt,PX+PW-14,PY+216);ctx.shadowBlur=0;
-      }
-    }else{
-      const _allShop=[...SKINS,...TRAILS,...BOOSTS];
-      const _uItem=_allShop.filter(it=>!isOwned(it.id)&&it.price>0)
-        .sort((a,b)=>a.price-b.price)[0]||null;
-      if(_uItem){
-        const _fill=Math.min(1,coinBank/_uItem.price);
-        const _ready=coinBank>=_uItem.price;
-        const _leftTxt='\uD83C\uDF81 '+_uItem.name;
-        const _rightTxt=_ready?'READY!':(coinBank+'/'+_uItem.price);
-        ctx.font="700 9px 'Rajdhani',sans-serif";
-        const _lW=ctx.measureText(_leftTxt).width;
-        const _rW=ctx.measureText(_rightTxt).width;
-        const _barW=Math.max(24,PW-28-_lW-_rW-12);
-        const _barX=PX+14+_lW+6;
-        ctx.textAlign='left';ctx.fillStyle=_ready?'#4ade80':'#94a3b8';
-        if(_ready){ctx.shadowColor='#22c55e';ctx.shadowBlur=5;}
-        ctx.fillText(_leftTxt,PX+14,PY+216);ctx.shadowBlur=0;
-        ctx.fillStyle='rgba(255,255,255,0.08)';rr(_barX,_barY,_barW,_barH,3);ctx.fill();
-        if(_fill>0){
-          const _pc=_ready?'#4ade80':'#38bdf8';
-          ctx.fillStyle=_pc;ctx.shadowColor=_pc;ctx.shadowBlur=4;
-          rr(_barX,_barY,_barW*_fill,_barH,3);ctx.fill();ctx.shadowBlur=0;
-        }
-        ctx.textAlign='right';ctx.fillStyle=_ready?'#4ade80':'#64748b';
-        if(_ready){ctx.shadowColor='#22c55e';ctx.shadowBlur=5;}
-        ctx.fillText(_rightTxt,PX+PW-14,PY+216);ctx.shadowBlur=0;
-      }
+    const _FADE=20;
+    const _barAlpha=coinCountUpDone?Math.min(1,barToggleTimer/_FADE):0;
+    ctx.save();ctx.globalAlpha=_barAlpha;
+    const _wXP=typeof weeklyXP!=='undefined'?weeklyXP:0;
+    const _wXPT=typeof WEEKLY_XP_TARGET!=='undefined'?WEEKLY_XP_TARGET:5000;
+    const _wFill=Math.min(1,_wXPT>0?_wXP/_wXPT:0);
+    const _barH=7,_barY=PY+244;
+    ctx.font="700 11px 'Rajdhani',sans-serif";
+    ctx.textAlign='left';ctx.textBaseline='middle';
+    ctx.fillStyle='#fbbf24';
+    ctx.fillText('XP',PX+14,PY+248);
+    const _lW=ctx.measureText('XP').width;
+    const _barX=PX+14+_lW+8;
+    const _barW=PW-28-_lW-8;
+    ctx.fillStyle='rgba(255,255,255,0.08)';rr(_barX,_barY,_barW,_barH,3);ctx.fill();
+    if(_wFill>0){
+      ctx.fillStyle=_wFill>=1?'#4ade80':'#fbbf24';
+      ctx.shadowColor=_wFill>=1?'#22c55e':'#f59e0b';ctx.shadowBlur=4;
+      rr(_barX,_barY,_barW*_wFill,_barH,3);ctx.fill();ctx.shadowBlur=0;
     }
     ctx.textBaseline='alphabetic';
     ctx.restore();
   }
 
-  // ── Unlock nudge — fades in after count-up ──
-  if(coinCountUpDone){
-    const _allItems=[...SKINS,...TRAILS,...BOOSTS];
-    const _nextItem=_allItems.find(it=>!isOwned(it.id)&&it.price>0&&coinBank>=it.price*0.7);
-    if(_nextItem){
-      ctx.save();ctx.textAlign='center';ctx.textBaseline='alphabetic';
-      ctx.font="600 8px 'Rajdhani',sans-serif";
-      if(coinBank>=_nextItem.price){
-        ctx.fillStyle='#4ade80';ctx.shadowColor='#22c55e';ctx.shadowBlur=5;
-        ctx.fillText('\u2713 Unlock '+_nextItem.name+' now! ('+_nextItem.price+' coins)',W/2,PY+236);ctx.shadowBlur=0;
-      }else{
-        ctx.fillStyle='#94a3b8';
-        ctx.fillText((_nextItem.price-coinBank)+' more coins to unlock '+_nextItem.name,W/2,PY+236);
-      }
-      ctx.restore();
-    }
-  }
-
-  // ── Mission compact row ──
-  ctx.save();ctx.textAlign='left';ctx.textBaseline='middle';
-  const _wdone=typeof weeklyAllDone!=='undefined'&&weeklyAllDone;
-  const _midx=typeof weeklyMissionIdx!=='undefined'?weeklyMissionIdx:0;
-  const _dotR=3,_dotGap=10;
-  const _dotsW=5*(_dotR*2+_dotGap)-_dotGap;
-  let _missionTxt='';
-  if(_wdone||_midx>=5)_missionTxt='WEEK COMPLETE \u2606';
-  else if(activeMission)_missionTxt='MISSION '+(_midx+1)+'/5: '+activeMission.text;
-  if(_missionTxt){
-    ctx.font="600 8px 'Rajdhani',sans-serif";
-    const _txtW=ctx.measureText(_missionTxt).width;
-    const _totalW=_dotsW+8+_txtW;
-    const _startX=W/2-_totalW/2;
-    const _rowY=PY+250;
-    for(let _di=0;_di<5;_di++){
-      const _dx=_startX+_di*(_dotR*2+_dotGap)+_dotR;
-      const _dn=_di<_midx,_cur=_di===_midx&&!_wdone;
-      ctx.fillStyle=_dn?'#fbbf24':_cur?'#86efac':'#1e293b';
-      ctx.shadowColor=_dn?'#f59e0b':_cur?'#4ade80':'transparent';
-      ctx.shadowBlur=_dn||_cur?4:0;
-      ctx.beginPath();ctx.arc(_dx,_rowY,_dn||_cur?_dotR:_dotR-1,0,Math.PI*2);ctx.fill();
-    }
-    ctx.shadowBlur=0;
-    ctx.fillStyle=_wdone?'#4ade80':'#64748b';
-    const _maxTxtW=PX+PW-14-(_startX+_dotsW+8);
-    let _mT=_missionTxt;
-    while(_mT.length>8&&ctx.measureText(_mT).width>Math.max(60,_maxTxtW))_mT=_mT.slice(0,-1);
-    if(_mT!==_missionTxt)_mT=_mT.trim()+'\u2026';
-    ctx.fillText(_mT,_startX+_dotsW+8,_rowY);
-  }
-  ctx.restore();
-
-  // Divider above in-panel buttons
+  // Divider above share button
   ctx.strokeStyle='rgba(255,255,255,0.07)';ctx.lineWidth=1;
-  ctx.beginPath();ctx.moveTo(PX+16,PY+263);ctx.lineTo(PX+PW-16,PY+263);ctx.stroke();
+  ctx.beginPath();ctx.moveTo(PX+16,PY+266);ctx.lineTo(PX+PW-16,PY+266);ctx.stroke();
 
   // ── SHARE button ──
-  const shW=168,shH=28,shX=W/2-shW/2,shY=PY+271;
+  const shW=180,shH=32,shX=W/2-shW/2,shY=PY+274;
   ctx.save();
   ctx.fillStyle='rgba(6,20,50,0.92)';rr(shX,shY,shW,shH,9);ctx.fill();
   ctx.strokeStyle='#38bdf8';ctx.lineWidth=1.6;ctx.shadowColor='#38bdf8';ctx.shadowBlur=10;
   rr(shX,shY,shW,shH,9);ctx.stroke();ctx.shadowBlur=0;
-  ctx.font="bold 10px 'Orbitron',sans-serif";ctx.fillStyle='#7dd3fc';
+  ctx.font="bold 13px 'Orbitron',sans-serif";ctx.fillStyle='#7dd3fc';
   ctx.textAlign='center';ctx.textBaseline='middle';
   ctx.fillText('\uD83D\uDCE4  SHARE MY RUN',W/2,shY+shH/2);
   ctx.textBaseline='alphabetic';ctx.restore();
 
   // ── RETRY + MENU ──
-  const rbW=132,rbH=34,rbX=W/2-rbW-6,rbY=PY+PH-54;
-  const mbW=132,mbH=34,mbX=W/2+6,mbY=PY+PH-54;
+  const rbW=132,rbH=36,rbX=W/2-rbW-6,rbY=PY+PH-52;
+  const mbW=132,mbH=36,mbX=W/2+6,mbY=PY+PH-52;
+  // Invalidate cached gradients if panel Y has shifted
   if(!GC.goRetryGrad){
     const rG=ctx.createLinearGradient(rbX,rbY,rbX,rbY+rbH);
     rG.addColorStop(0,'rgba(220,30,30,0.35)');rG.addColorStop(1,'rgba(140,10,10,0.25)');
@@ -6044,7 +6008,7 @@ function drawGameOver(){
   ctx.fillStyle=GC.goRetryGrad;rr(rbX,rbY,rbW,rbH,9);ctx.fill();
   ctx.strokeStyle='#ef4444';ctx.lineWidth=1.8;ctx.shadowColor='#ef4444';ctx.shadowBlur=14;
   rr(rbX,rbY,rbW,rbH,9);ctx.stroke();ctx.shadowBlur=0;
-  ctx.font="bold 11px 'Orbitron',sans-serif";ctx.fillStyle='#fca5a5';
+  ctx.font="bold 13px 'Orbitron',sans-serif";ctx.fillStyle='#fca5a5';
   ctx.textAlign='center';ctx.textBaseline='middle';
   ctx.fillText('\u21BA  RETRY',rbX+rbW/2,rbY+rbH/2);
   ctx.restore();
@@ -6052,7 +6016,7 @@ function drawGameOver(){
   ctx.fillStyle=GC.goMenuGrad;rr(mbX,mbY,mbW,mbH,9);ctx.fill();
   ctx.strokeStyle='#60a5fa';ctx.lineWidth=1.8;ctx.shadowColor='#3b82f6';ctx.shadowBlur=10;
   rr(mbX,mbY,mbW,mbH,9);ctx.stroke();ctx.shadowBlur=0;
-  ctx.font="bold 11px 'Orbitron',sans-serif";ctx.fillStyle='#93c5fd';
+  ctx.font="bold 13px 'Orbitron',sans-serif";ctx.fillStyle='#93c5fd';
   ctx.textAlign='center';ctx.textBaseline='middle';
   ctx.fillText('\u2302  MENU',mbX+mbW/2,mbY+mbH/2);
   ctx.restore();
@@ -6092,16 +6056,6 @@ function _drawGoBtns(panelBottom){
   ctx.font="bold 10px 'Orbitron',sans-serif";
   ctx.textAlign='center';ctx.textBaseline='middle';
   ctx.fillText('★  SHOP',_btnX+_btnW/2,_shopY+_btnH/2);
-  if(_canBuy){
-    // Small "UNLOCK READY" chip at top-right corner of button
-    ctx.font="600 7px 'Rajdhani',sans-serif";
-    ctx.fillStyle='#fbbf24';
-    const _chip='● UNLOCK READY';
-    const _cw=ctx.measureText(_chip).width+8;
-    ctx.fillStyle='rgba(251,191,36,0.18)';rr(_btnX+_btnW-_cw-4,_shopY-7,_cw,12,3);ctx.fill();
-    ctx.fillStyle='#fbbf24';ctx.textBaseline='middle';
-    ctx.fillText(_chip,_btnX+_btnW-_cw/2-4,_shopY-1);
-  }
   ctx.restore();
 
   // Board button
