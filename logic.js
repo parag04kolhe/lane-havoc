@@ -1488,6 +1488,20 @@ function update(dt){
     menuScrollY=(menuScrollY+0.5*dt)%TILE_H;
   }
 
+  // ── SHOP celebration timer + confetti physics ──
+  if(gst===ST.SHOP){
+    if(shopCelebrationTimer>0) shopCelebrationTimer-=dt;
+    for(let _si=shopConfettiParticles.length-1;_si>=0;_si--){
+      const _sp=shopConfettiParticles[_si];
+      _sp.x+=_sp.vx*dt;
+      _sp.y+=_sp.vy*dt;
+      _sp.vy+=0.06*dt; // gravity
+      _sp.rot+=_sp.rotV*dt;
+      _sp.life-=0.009*dt;
+      if(_sp.y>H+20||_sp.life<=0) shopConfettiParticles.splice(_si,1);
+    }
+  }
+
   let speedMult=1.0;
   // ── Nitro: boost to the stage-specific nitro speed from the lookup table ──
   if(nitroTimer>0){const _ns=STAGE_NITRO_SPD[Math.min(stageNum,20)];speedMult=Math.max(speedMult,_ns/baseSpd);}
@@ -2495,22 +2509,51 @@ const SHOP_TABS=['SKINS','TRAILS','BOOSTS'];
 const SHOP_DATA=[SKINS,TRAILS,BOOSTS];
 function isOwned(id){return ownedItems.includes(id);}
 
+function _mkShopConfetti(){
+  // Colourful confetti burst for shop purchase celebration
+  const cols=['#fbbf24','#fde68a','#f59e0b','#4ade80','#60a5fa','#c084fc','#f87171','#fb923c','#ffffff'];
+  const arr=[];
+  for(let i=0;i<60;i++){
+    arr.push({
+      x:Math.random()*W,
+      y:-10-Math.random()*60,
+      vx:(Math.random()-0.5)*3.5,
+      vy:2.2+Math.random()*3.2,
+      size:3+Math.random()*6,
+      color:cols[Math.floor(Math.random()*cols.length)],
+      rot:Math.random()*Math.PI*2,
+      rotV:(Math.random()-0.5)*0.22,
+      life:1
+    });
+  }
+  return arr;
+}
+
 function shopBuy(){
   const item=SHOP_DATA[shopTab][shopIdx];if(!item)return;
   // Prestige gate — LEGENDARY items require reaching their prestige stage first
   if(item.prestige&&bestStageEver<item.prestige&&!isOwned(item.id)){snd('deny');return;}
   if(isOwned(item.id)){
+    // Already owned — just equip it
     if(shopTab===0){equippedSkin=item.id;saveLS('rr_skin2',equippedSkin);}
     if(shopTab===1){equippedTrail=item.id;saveLS('rr_trail2',equippedTrail);}
     if(shopTab===2){equippedBoost=item.id;saveLS('rr_boost2',equippedBoost);}
-    snd('buy');
+    snd('equip');
+    shopCelebrationTimer=55;
+    shopBoughtNewItem=false;
+    shopConfettiParticles=[];
   } else if(coinBank>=item.price){
+    // New purchase — deduct coins, equip, celebrate!
     coinBank-=item.price;saveLS('rr_coins2',coinBank);cvalEl.textContent=coinBank;
     ownedItems.push(item.id);saveLS('rr_owned2',ownedItems);
     if(shopTab===0){equippedSkin=item.id;saveLS('rr_skin2',equippedSkin);}
     if(shopTab===1){equippedTrail=item.id;saveLS('rr_trail2',equippedTrail);}
     if(shopTab===2){equippedBoost=item.id;saveLS('rr_boost2',equippedBoost);}
-    snd('buy');
+    snd('cheer');
+    shopCelebrationTimer=130;
+    shopBoughtNewItem=true;
+    shopConfettiParticles=_mkShopConfetti();
+    haptic([30,20,60,20,30]);
   } else snd('deny');
 }
 

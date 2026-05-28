@@ -395,24 +395,24 @@ function getEnvTheme(){
 ══════════════════════════════════════════════ */
 const SKINS=[
   {id:'green', name:'CIRCUIT',   price:0,   color:'#00e676',hl:'#ccfff0', rarity:'COMMON',    perk:null},
-  {id:'red',   name:'BLAZE',     price:50,  color:'#ff3d3d',hl:'#ffd0d0', rarity:'COMMON',    perk:'Near-miss score +20%'},
-  {id:'blue',  name:'TORPEDO',   price:50,  color:'#3b82f6',hl:'#bfdbfe', rarity:'COMMON',    perk:'Mini magnet always active'},
-  {id:'cyan',  name:'ICE KING',  price:75,  color:'#06b6d4',hl:'#cffafe', rarity:'RARE',      perk:'Rain handling improved'},
-  {id:'purple',name:'PHANTOM',   price:100, color:'#a855f7',hl:'#e9d5ff', rarity:'RARE',      perk:'Ghost lasts 1s longer'},
-  {id:'gold',  name:'GOLD RUSH', price:200, color:'#f59e0b',hl:'#fef3c7', rarity:'LEGENDARY', perk:'Every coin scores +1', prestige:10},
+  {id:'red',   name:'BLAZE',     price:150, color:'#ff3d3d',hl:'#ffd0d0', rarity:'COMMON',    perk:'Near-miss score +20%'},
+  {id:'blue',  name:'TORPEDO',   price:150, color:'#3b82f6',hl:'#bfdbfe', rarity:'COMMON',    perk:'Mini magnet always active'},
+  {id:'cyan',  name:'ICE KING',  price:350, color:'#06b6d4',hl:'#cffafe', rarity:'RARE',      perk:'Rain handling improved'},
+  {id:'purple',name:'PHANTOM',   price:500, color:'#a855f7',hl:'#e9d5ff', rarity:'RARE',      perk:'Ghost lasts 1s longer'},
+  {id:'gold',  name:'GOLD RUSH', price:900, color:'#f59e0b',hl:'#fef3c7', rarity:'LEGENDARY', perk:'Every coin scores +1', prestige:10},
 ];
 const TRAILS=[
   {id:'default',name:'EXHAUST', price:0,   cols:null,                                                        rarity:'COMMON',    perk:null},
-  {id:'fire',   name:'FIRE',    price:75,  cols:['#ff4400','#ff8800','#ffcc00','#ff2200'],                   rarity:'COMMON',    perk:'Nitro lasts 0.5s longer'},
-  {id:'ice',    name:'ICE',     price:75,  cols:['#67e8f9','#3b82f6','#a5f3fc','#93c5fd'],                   rarity:'RARE',      perk:'Passive coin pull'},
-  {id:'neon',   name:'NEON',    price:100, cols:['#4ade80','#22d3ee','#86efac','#6ee7b7'],                   rarity:'RARE',      perk:'Near-miss popups last longer'},
-  {id:'rainbow',name:'RAINBOW', price:150, cols:['#f87171','#fb923c','#fbbf24','#4ade80','#60a5fa','#c084fc'],rarity:'LEGENDARY', perk:'Larger exhaust particles', prestige:10},
+  {id:'fire',   name:'FIRE',    price:175, cols:['#ff4400','#ff8800','#ffcc00','#ff2200'],                   rarity:'COMMON',    perk:'Nitro lasts 0.5s longer'},
+  {id:'ice',    name:'ICE',     price:200, cols:['#67e8f9','#3b82f6','#a5f3fc','#93c5fd'],                   rarity:'RARE',      perk:'Passive coin pull'},
+  {id:'neon',   name:'NEON',    price:400, cols:['#4ade80','#22d3ee','#86efac','#6ee7b7'],                   rarity:'RARE',      perk:'Near-miss popups last longer'},
+  {id:'rainbow',name:'RAINBOW', price:800, cols:['#f87171','#fb923c','#fbbf24','#4ade80','#60a5fa','#c084fc'],rarity:'LEGENDARY', perk:'Larger exhaust particles', prestige:10},
 ];
 const BOOSTS=[
-  {id:'none',        name:'NONE',         price:0,  desc:'No starting boost',          rarity:'COMMON'},
-  {id:'shield_start',name:'SHIELD START', price:30, desc:'Begin each run with Shield', rarity:'COMMON'},
-  {id:'nitro_start', name:'NITRO START',  price:40, desc:'Begin each run with Nitro',  rarity:'RARE'},
-  {id:'extra_life',  name:'EXTRA LIFE',   price:50, desc:'Start every run with 2 lives',rarity:'RARE'},
+  {id:'none',        name:'NONE',         price:0,   desc:'No starting boost',          rarity:'COMMON'},
+  {id:'shield_start',name:'SHIELD START', price:100, desc:'Begin each run with Shield', rarity:'COMMON'},
+  {id:'nitro_start', name:'NITRO START',  price:150, desc:'Begin each run with Nitro',  rarity:'RARE'},
+  {id:'extra_life',  name:'EXTRA LIFE',   price:225, desc:'Start every run with 2 lives',rarity:'RARE'},
 ];
 
 /* ══════════════════════════════════════════════
@@ -775,6 +775,9 @@ let nearMissStreak=0,comboDecay=0,comboMult=1,comboFlashTimer=0;
 let playerTilt=0;
 let playerLaneVel=0;
 let shopTab=0,shopIdx=0,preShop=ST.INTRO;
+let shopCelebrationTimer=0; // frames for celebration overlay
+let shopBoughtNewItem=false;  // true=purchase, false=equip-only
+let shopConfettiParticles=[];  // confetti burst in shop
 let bgScrollY=0;
 // Weather
 let weatherType='clear',weatherTimer=0,weatherTotalDur=0,weatherCooldown=600;

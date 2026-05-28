@@ -290,6 +290,14 @@ function snd(type){
     case 'missionComplete':[0,4,7,12,16,19].forEach((s,i)=>mk(660*Math.pow(2,s/12),'sine',0.20,0.22,null,i*0.07));break;
     case 'shieldBlock':mk(500,'square',0.20,0.22,1100);nz(0.12,0.12,1400);break;
     case 'buy':      [0,4,7,12,16,19].forEach((s,i)=>mk(440*Math.pow(2,s/12),'sine',0.18,0.18,null,i*0.06));break;
+    case 'equip': {
+      // Satisfying equip lock-in — snappy click + rising shimmer
+      mk(520,'sine',0.07,0.32,1040);       // crisp click attack
+      mk(780,'sine',0.18,0.24,1560,0.06); // rising confirmation tone
+      mk(1200,'sine',0.12,0.14,null,0.18); // high shimmer tail
+      nz(0.07,0.10,1800);                  // air sheen
+      break;
+    }
     case 'deny':     mk(200,'square',0.18,0.15,100);break;
     case 'nitroOn':  [0,4,7,12,16].forEach((s,i)=>mk(880*Math.pow(2,s/12),'sine',0.12,0.16,null,i*0.04));break;
     // ── Machine Gun sounds ───────────────────────────────────────────────────
