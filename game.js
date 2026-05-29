@@ -1027,8 +1027,8 @@ function _saveNitroTutDone(){
 // ══════════════════════════════════════════
 // Phase 2: jump blockade spawned flag (prevents double-spawn after rewind)
 let tutPhase2Spawned = false;
-// Phase 2: breathing room — frames of clear road after move-prompt before obstacle spawns
-let tutPhase2BreathTimer = 0;   // counts from 70 → 0 before obstacle group spawns
+// Phase 2: reserved — breathing gap removed; simultaneous spawn restored
+let tutPhase2BreathTimer = 0;
 // Phase 2: slow-down flag — true when jump obstacle is within the visible slow zone
 let tutObstSlowActive = false;
 // Track mode first-run: overlay shown before Phase 2 jump obstacle arrives
