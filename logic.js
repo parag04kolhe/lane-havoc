@@ -653,7 +653,7 @@ function _doShareRunSummary(){
   const cm          = runMaxCombo>=10?4:runMaxCombo>=6?3:runMaxCombo>=3?2:1;
 
   // Share link — fixed game URL
-  const _baseURL = 'https://parag04kolhe.github.io/lane-havoc/';
+  const _baseURL = 'https://play.google.com/store/apps/details?id=com.paragamer.lanehavoc';
 
   const shareText =
     '\uD83C\uDFCE\uFE0F Lane Havoc \u2014 My Run!\n'+

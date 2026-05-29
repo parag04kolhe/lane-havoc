@@ -5835,6 +5835,7 @@ function drawGameOver(){
   // ── Animate coin count-up — 1.5s at 60fps ──
   if(!coinCountUpDone){
     coinCountUpTimer++;
+    if(coinCountUpTimer===1&&sessionCoins>0)snd('coinCountUp'); // trigger once at start
     const _dur=90;
     const _t=Math.min(1,coinCountUpTimer/_dur);
     const _ease=1-Math.pow(1-_t,3);
@@ -5921,28 +5922,19 @@ function drawGameOver(){
   ctx.shadowColor='#ef4444';ctx.shadowBlur=6;
   ctx.textAlign='left';ctx.fillText(runMaxCombo+'\u00d7',W/2+10,_strY);ctx.shadowBlur=0;
 
-  // ── Coins row — pops and glows during 1.5s count-up animation ──
+  // ── Coins row — fixed 18px throughout; gold glow during count-up ──
   const _coinAnimating=!coinCountUpDone;
   const _coinY=PY+210;
   ctx.font="600 14px 'Rajdhani',sans-serif";ctx.fillStyle='#94a3b8';
   ctx.textAlign='right';ctx.textBaseline='middle';
   ctx.fillText('Coins',W/2-10,_coinY);
-  if(_coinAnimating){
-    // Pop effect: pulsing scale + strong glow to catch player attention
-    const _pulse=1.0+fastSin(frameCount*0.30)*0.13;
-    const _fs=Math.round(26*_pulse);
-    const _glow=16+fastSin(frameCount*0.22)*9;
-    ctx.save();
-    ctx.font="bold "+_fs+"px 'Orbitron',sans-serif";
-    ctx.fillStyle='#fde68a';ctx.shadowColor='#fbbf24';ctx.shadowBlur=_glow;
-    ctx.textAlign='left';ctx.textBaseline='middle';
-    ctx.fillText('+'+coinCountUpValue,W/2+10,_coinY);
-    ctx.restore();
-  }else{
-    ctx.font="bold 18px 'Orbitron',sans-serif";ctx.fillStyle='#fbbf24';
-    ctx.textAlign='left';ctx.textBaseline='middle';
-    ctx.fillText('+'+coinCountUpValue,W/2+10,_coinY);
-  }
+  ctx.save();
+  ctx.font="bold 18px 'Orbitron',sans-serif";
+  ctx.fillStyle=_coinAnimating?'#fde68a':'#fbbf24';
+  ctx.shadowColor='#fbbf24';ctx.shadowBlur=_coinAnimating?14:0;
+  ctx.textAlign='left';ctx.textBaseline='middle';
+  ctx.fillText('+'+coinCountUpValue,W/2+10,_coinY);
+  ctx.restore();
   ctx.textBaseline='alphabetic';
 
   // Divider below stats

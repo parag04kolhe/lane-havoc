@@ -253,6 +253,18 @@ function snd(type){
     case 'speedup':  [0,4,7,12].forEach((s,i)=>mk(440*Math.pow(2,s/12),'sine',0.20,0.18,null,i*0.08));break;
     case 'extralife':[0,4,7,12,16].forEach((s,i)=>mk(523*Math.pow(2,s/12),'sine',0.22,0.18,null,i*0.09));break;
     case 'coin':     mk(1400,'sine',0.10,0.13,2000);break;
+    case 'coinCountUp':{
+      // Ascending celebration — 9 bright tones over ~1.35s, rising in pitch and volume
+      // Synced to the 1.5s coin count-up animation on the run summary screen
+      const _semis=[0,2,4,7,9,11,14,16,19];
+      const _base=660;
+      _semis.forEach((s,i)=>{
+        const _f=_base*Math.pow(2,s/12);
+        const _dur=0.13-i*0.003; // notes get crisper as pitch rises
+        const _vol=0.06+i*0.011; // louder toward the top
+        mk(_f,'sine',_dur,_vol,_f*1.6,i*0.15);
+      });
+      break;}
     case 'powerup':  [0,7,12,19].forEach((s,i)=>mk(440*Math.pow(2,s/12),'sine',0.15,0.18,null,i*0.05));break;
     case 'nearmiss': nz(0.09,0.18,900);mk(320,'sawtooth',0.08,0.10,640);break;
     case 'comboUp':  [0,7,12].forEach((s,i)=>mk(660*Math.pow(2,s/12),'sine',0.16,0.22,null,i*0.06));break;

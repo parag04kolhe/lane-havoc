@@ -267,5 +267,82 @@
 document.getElementById('boot-loader').style.display='none';
 gst=ST.ENGINE;splashTimer=0;initVars();requestAnimationFrame(loop);
 </script>
+
+<script>
+async function scheduleDailyNotifications() {
+  if (!window.Capacitor || !window.Capacitor.isNativePlatform()) return;
+  const { LocalNotifications } = Capacitor.Plugins;
+  const perm = await LocalNotifications.requestPermissions();
+  if (perm.display !== 'granted') return;
+
+  const messages = {
+    0: {
+      title: "🎮 Sunday Rush — Lane Havoc",
+      body: "Weekend's almost over! Earn 2× coins during Rush Hour before it ends 🪙🪙"
+    },
+    1: {
+      title: "😩 Rough Monday? — Lane Havoc",
+      body: "Mondays are tough. Unwind with Lane Havoc & earn 2× coins right now! 🪙"
+    },
+    2: {
+      title: "😤 Tuesday Grind — Lane Havoc",
+      body: "Another long day at work. Time to race & earn 2× coins during Rush Hour! 🪙🪙"
+    },
+    3: {
+      title: "😮‍💨 Hump Day — Lane Havoc",
+      body: "Halfway through the week! De-stress with Lane Havoc — 2× coins now! 🪙"
+    },
+    4: {
+      title: "🏁 Almost Friday — Lane Havoc",
+      body: "One more day! Treat yourself — play now and grab your 2× coins! 🪙🪙"
+    },
+    5: {
+      title: "🎉 TGIF — Lane Havoc",
+      body: "It's Friday! Start the weekend right — 2× coins waiting in Rush Hour! 🪙🪙"
+    },
+    6: {
+      title: "🚀 Saturday Fun — Lane Havoc",
+      body: "Weekend vibes! Jump in and earn 2× coins during Rush Hour now! 🪙🪙"
+    }
+  };
+
+  // Cancel all previously scheduled notifications
+  const toCancel = [0,1,2,3,4,5,6].map(i => ({ id: 3000 + i }));
+  await LocalNotifications.cancel({ notifications: toCancel });
+
+  // Schedule one notification for each of the next 7 days at 6 PM
+  const notifications = [];
+  const now = new Date();
+
+  for (let i = 0; i < 7; i++) {
+    const fireDate = new Date();
+    fireDate.setHours(18, 0, 0, 0);
+    fireDate.setDate(fireDate.getDate() + i);
+
+    // If today's 6 PM has already passed, push it to next week
+    if (i === 0 && fireDate <= now) {
+      fireDate.setDate(fireDate.getDate() + 7);
+    }
+
+    const dayOfWeek = fireDate.getDay(); // 0=Sunday, 1=Monday ... 6=Saturday
+    const msg = messages[dayOfWeek];
+
+    notifications.push({
+      id: 3000 + i,
+      title: msg.title,
+      body: msg.body,
+      schedule: { at: fireDate },
+      sound: null,
+      actionTypeId: "",
+      extra: null
+    });
+  }
+
+  await LocalNotifications.schedule({ notifications });
+}
+
+// Run 3 seconds after app loads, reschedules every time app is opened
+window.addEventListener('load', () => setTimeout(scheduleDailyNotifications, 3000));
+</script>
 </body>
 </html>

@@ -607,12 +607,13 @@ async function _llFetchRank(score){
 }
 
 // Insert a new score row — only called when finalScore beats personal best.
+// Routes through Edge Function for server-side validation — never writes directly to DB.
 // Updates local personal best cache after a confirmed write.
 async function _llSubmit(name, score){
   try{
-    const r=await fetch(_SB_URL+'/rest/v1/scores',{
+    const r=await fetch(_SB_URL+'/functions/v1/submit-score',{
       method :'POST',
-      headers:{..._SB_HDR, 'Prefer':'return=minimal'},
+      headers:{'Content-Type':'application/json'},
       body   :JSON.stringify({name, score})
     });
     console.log('[SB] submit status:',r.status);
