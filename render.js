@@ -3280,23 +3280,42 @@ function _drawMode2Hints(){
     ctx.fillStyle='rgba(255,255,255,0.58)';
     ctx.fillText('Drag across lanes to control your car',textX,midY+9);
   } else {
-    // Jump hint: pulsing double-tap ripple
-    const ripple=5+Math.sin(t*0.18)*3;
-    ctx.strokeStyle='rgba(245,158,11,0.75)';ctx.lineWidth=1.4;
-    ctx.beginPath();ctx.arc(iconX,midY,ripple,0,Math.PI*2);ctx.stroke();
-    ctx.beginPath();ctx.arc(iconX,midY,ripple*1.8,0,Math.PI*2);
-    ctx.globalAlpha=alpha*0.35;ctx.stroke();ctx.globalAlpha=alpha;
-    ctx.font='16px sans-serif';
-    ctx.textAlign='center';ctx.textBaseline='middle';
-    ctx.fillStyle='#fff';
-    ctx.fillText('✌️',iconX,midY);
-    ctx.font="bold 9px 'Orbitron',sans-serif";
-    ctx.fillStyle='#fef3c7';
-    ctx.textAlign='left';ctx.textBaseline='middle';
-    ctx.fillText('DOUBLE-TAP TO JUMP',textX,midY-9);
-    ctx.font="500 9.5px 'Rajdhani',sans-serif";
-    ctx.fillStyle='rgba(255,255,255,0.58)';
-    ctx.fillText('Tap twice quickly to leap over obstacles',textX,midY+9);
+    // Jump hint: animated swipe-up finger with motion trail
+    const swipeCycle = 50;
+    const swipeT     = (t % swipeCycle) / swipeCycle;
+    const swipeEased = swipeT < 0.5 ? 2*swipeT*swipeT : -1+(4-2*swipeT)*swipeT;
+    const fY   = midY + 10 - swipeEased * 22;  // finger moves up 22px
+    const trailA = (1 - swipeEased) * 0.55;
+
+    // Ripple expanding from lift-off
+    if(trailA < 0.40){
+      const rr2 = 8 + (1 - trailA / 0.40) * 10;
+      ctx.globalAlpha = alpha * (1 - trailA / 0.40) * 0.50;
+      ctx.strokeStyle = '#f59e0b'; ctx.lineWidth = 1.4;
+      ctx.beginPath(); ctx.arc(iconX, midY + 10, rr2, 0, Math.PI*2); ctx.stroke();
+    }
+
+    // Motion trail dots below finger
+    ctx.globalAlpha = alpha * trailA * 0.55;
+    ctx.fillStyle = '#f59e0b';
+    ctx.beginPath(); ctx.arc(iconX, fY + 14, 3, 0, Math.PI*2); ctx.fill();
+    ctx.globalAlpha = alpha * trailA * 0.28;
+    ctx.beginPath(); ctx.arc(iconX, fY + 24, 2, 0, Math.PI*2); ctx.fill();
+
+    // Finger emoji at animated position
+    ctx.globalAlpha = alpha;
+    ctx.font = '16px sans-serif';
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.fillStyle = '#fff';
+    ctx.fillText('☝️', iconX, fY);
+
+    ctx.font = "bold 9px 'Orbitron',sans-serif";
+    ctx.fillStyle = '#fef3c7';
+    ctx.textAlign = 'left'; ctx.textBaseline = 'middle';
+    ctx.fillText('SWIPE UP TO JUMP', textX, midY-9);
+    ctx.font = "500 9.5px 'Rajdhani',sans-serif";
+    ctx.fillStyle = 'rgba(255,255,255,0.58)';
+    ctx.fillText('Swipe upward quickly to leap obstacles', textX, midY+9);
   }
 
   ctx.restore();
@@ -3415,6 +3434,153 @@ function _drawUpArrowOnObst(obsRef){
   ctx.closePath();
   ctx.fill();
   ctx.shadowBlur = 0;
+  ctx.restore();
+}
+
+/* ── Arc trajectory drawn from player car, over obstacle, to landing point ──
+   Gives players a physical preview of the jump path so the mechanic is
+   immediately readable without any text instruction.                        */
+function _drawJumpArc(playerX, playerY, obsRef){
+  if(!obsRef||!obsRef._active) return;
+  const ox = LANE_XS[obsRef.lane];
+  const oy = obsRef.y;
+
+  // Arc: starts at player, peaks ~70px above obstacle, lands ~100px past it
+  const startX = playerX, startY = playerY - 20;
+  const endX   = ox,      endY   = oy + 80;        // landing point past obstacle
+  const peakX  = ox,      peakY  = oy - 70;        // apex above obstacle
+
+  // Cubic bezier control points through the peak
+  const cp1x = startX + (peakX - startX) * 0.4, cp1y = peakY;
+  const cp2x = endX   - (endX - peakX)   * 0.2, cp2y = peakY;
+
+  // Pulsing alpha for visual rhythm
+  const alpha = 0.45 + 0.35 * Math.abs(Math.sin(frameCount * 0.09));
+
+  ctx.save();
+  ctx.globalAlpha = alpha;
+  ctx.strokeStyle = '#4ade80';
+  ctx.lineWidth   = 3.5;
+  ctx.lineCap     = 'round';
+  ctx.setLineDash([10, 8]);
+  ctx.shadowColor = '#22c55e';
+  ctx.shadowBlur  = 16;
+  ctx.beginPath();
+  ctx.moveTo(startX, startY);
+  ctx.bezierCurveTo(cp1x, cp1y, cp2x, cp2y, endX, endY);
+  ctx.stroke();
+  ctx.setLineDash([]);
+  ctx.shadowBlur = 0;
+
+  // Small landing dot at end of arc
+  ctx.globalAlpha = alpha * 0.8;
+  ctx.fillStyle   = '#4ade80';
+  ctx.beginPath();
+  ctx.arc(endX, endY, 5, 0, Math.PI * 2);
+  ctx.fill();
+
+  ctx.restore();
+}
+
+/* ── Large "JUMP!" label drawn close above the obstacle — unmissable ── */
+function _drawJumpLabel(obsRef){
+  if(!obsRef||!obsRef._active) return;
+  const ox = LANE_XS[obsRef.lane];
+  const oy = obsRef.y;
+
+  // Pulsing scale: grows and shrinks on a 40-frame cycle
+  const cycle = 40;
+  const t = (frameCount % cycle) / cycle;
+  const scale = 1.0 + 0.18 * Math.sin(t * Math.PI * 2);
+  const alpha = 0.80 + 0.20 * Math.abs(Math.sin(frameCount * 0.09));
+
+  ctx.save();
+  ctx.globalAlpha = alpha;
+  ctx.font = `900 ${Math.round(22 * scale)}px 'Orbitron',impact,sans-serif`;
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillStyle   = '#4ade80';
+  ctx.shadowColor = '#22c55e';
+  ctx.shadowBlur  = 20;
+  ctx.fillText('JUMP!', ox, oy - 60);
+  ctx.shadowBlur = 0;
+  ctx.restore();
+}
+
+/* ── Track mode jump gesture overlay ───────────────────────────────────
+   Full-screen semi-transparent overlay shown for 2 seconds before the
+   jump obstacle arrives in track mode. Shows a large animated swipe-up
+   gesture so players understand the action before they need to react.   */
+function _drawTrackJumpGestureOverlay(){
+  if(typeof tutTrackJumpOverlayTimer==='undefined'||tutTrackJumpOverlayTimer<=0) return;
+
+  // Fade envelope: in 0-15f, hold, out last 20f
+  const alpha = clamp(
+    Math.min(tutTrackJumpOverlayTimer / 15, (120 - (120 - tutTrackJumpOverlayTimer)) / 20, 1),
+    0, 1
+  );
+  if(alpha < 0.02) return;
+
+  const cx = LANE_XS[player.lane]; // centre on player's current lane
+  const baseY = Math.round(H * 0.55);
+
+  // Animated swipe-up: finger moves from baseY upward over a 40-frame cycle
+  const swipeCycle = 40;
+  const swipeT = (frameCount % swipeCycle) / swipeCycle;
+  const swipeEased = swipeT < 0.5 ? 2 * swipeT * swipeT : -1 + (4 - 2 * swipeT) * swipeT;
+  const fingerY = baseY - swipeEased * 90; // swipes up 90px
+
+  // Ripple that expands as finger lifts
+  const rippleR = 18 + swipeEased * 24;
+  const rippleAlpha = (1 - swipeEased) * 0.70;
+
+  ctx.save();
+  ctx.globalAlpha = alpha;
+
+  // Dark pill background for the whole gesture area
+  const pillW = 120, pillH = 140;
+  ctx.fillStyle = 'rgba(4,8,22,0.78)';
+  rr(cx - pillW/2, baseY - pillH + 10, pillW, pillH + 30, 18); ctx.fill();
+  ctx.strokeStyle = '#4ade80'; ctx.lineWidth = 1.5;
+  ctx.shadowColor = '#4ade80'; ctx.shadowBlur = 12;
+  rr(cx - pillW/2, baseY - pillH + 10, pillW, pillH + 30, 18); ctx.stroke();
+  ctx.shadowBlur = 0;
+
+  // "SWIPE ↑" label at top of pill
+  ctx.font = "900 9px 'Orbitron',sans-serif";
+  ctx.fillStyle = '#bbf7d0';
+  ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  ctx.fillText('SWIPE ↑ TO JUMP', cx, baseY - pillH + 26);
+
+  // Ripple ring
+  if(rippleAlpha > 0.05){
+    ctx.globalAlpha = alpha * rippleAlpha;
+    ctx.strokeStyle = '#4ade80'; ctx.lineWidth = 2;
+    ctx.shadowColor = '#4ade80'; ctx.shadowBlur = 10;
+    ctx.beginPath(); ctx.arc(cx, baseY + 8, rippleR, 0, Math.PI * 2); ctx.stroke();
+    ctx.shadowBlur = 0;
+  }
+
+  // Finger image — swipes upward
+  ctx.globalAlpha = alpha * 0.92;
+  if(typeof window._FINGER_TAP !== 'undefined' && window._FINGER_TAP.complete && window._FINGER_TAP.naturalWidth > 0){
+    const sz = 70;
+    ctx.drawImage(window._FINGER_TAP, cx - sz/2, fingerY - sz/2, sz, sz);
+  } else {
+    // Fallback: draw a simple circle hand
+    ctx.fillStyle = '#4ade80';
+    ctx.beginPath(); ctx.arc(cx, fingerY, 16, 0, Math.PI * 2); ctx.fill();
+  }
+
+  // Upward motion trail — 2 fading dots below the finger
+  [[0.28, 20], [0.12, 42]].forEach(([a, off]) => {
+    ctx.globalAlpha = alpha * a;
+    ctx.fillStyle = '#4ade80';
+    ctx.shadowColor = '#4ade80'; ctx.shadowBlur = 8;
+    ctx.beginPath(); ctx.arc(cx, fingerY + off, 6, 0, Math.PI * 2); ctx.fill();
+    ctx.shadowBlur = 0;
+  });
+
   ctx.restore();
 }
 
@@ -3745,7 +3911,7 @@ function drawTutorialPhase(){
   //  PHASE 2 — enemy l3 (y=-400), enemy l2 (y=-430),
   //             manhole l0 + stone l1 (y=-460) + 2 lane-1 guide coins.
   //  Double-chevron LEFT when in wrong lane, no text.
-  //  Up arrow + "Swipe ↑ to jump" when in correct lane.
+  //  Up arrow + arc trajectory + "JUMP!" label when obstacle visible.
   //  Crash (incl. jumping over cars) → real crash anim → rewind.
   // ════════════════════════════════════════════════════════════
   else if(tutPhase === 2){
@@ -3755,6 +3921,10 @@ function drawTutorialPhase(){
                    (tutJumpObstRef2  && tutJumpObstRef2._active  && tutJumpObstRef2.y  >= SHOW_Y);
 
     if(!_isCrashing){
+      // ── Track mode: show jump gesture overlay while tutTrackJumpOverlayTimer > 0 ──
+      if(playMode==='track'&&tutTrackJumpOverlayTimer>0){
+        _drawTrackJumpGestureOverlay();
+      }
       if(player.lane >= 2){
         // Show glow + chevrons only once enemies appear at top
         if(_e2Vis || _e3Vis){
@@ -3768,7 +3938,13 @@ function drawTutorialPhase(){
         if(_oVis){
           const _oRef = player.lane===1 ? tutObstRef : tutJumpObstRef2;
           if(_oRef && _oRef._active && _oRef.y >= SHOW_Y){
+            // Draw big arc trajectory — visual ramp over obstacle
+            _drawJumpArc(px, py, _oRef);
+            // Up arrow on the obstacle itself
             _drawUpArrowOnObst(_oRef);
+            // Large "JUMP!" label just above the obstacle for immediate legibility
+            _drawJumpLabel(_oRef);
+            // Top banner with instruction
             if(playMode==='track'){
               _topBanner('Double-tap or Swipe ↑ to jump', '#bbf7d0', '#4ade80');
               _drawTrackDoubleTapHint(player.lane);

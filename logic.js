@@ -58,6 +58,7 @@ function initVars(){
   tutPhase9Enemies=[];
   // New tutorial vars
   tutPhase2Spawned=false;
+  tutPhase2BreathTimer=0;tutObstSlowActive=false;tutTrackJumpOverlayTimer=0;
   tutRewindActive=false;tutRewindTimer=0;tutCrashPopText='';tutCrashPopTimer=0;
   tutP3Spawned=false;tutP3GunUsed=false;
   tutP4Spawned=false;tutNitroMoveLocked=false;
@@ -915,11 +916,11 @@ function _flagTutCrash(type){
   if(tutPhase===1){
     tutCrashPopText='Switch lanes! →';
   } else if(tutPhase===2&&type==='car'&&player.jumping){
-    tutCrashPopText="Can't jump over car!";
+    tutCrashPopText="Cars can't be jumped — use lanes!";
   } else if(tutPhase===2&&type==='car'){
     tutCrashPopText='Wrong lane!  ←  Move left';
   } else if(tutPhase===2){
-    tutCrashPopText='Watch out!';
+    tutCrashPopText='Swipe UP to jump this!';
   } else {
     tutCrashPopText='Try again!';
   }
@@ -1962,10 +1963,13 @@ function update(dt){
     tutPhaseTimer+=dt;
     tutSpeedTarget=1.0; // default: full speed — each phase overrides as needed
 
-    // ── Phase 0: Setup — clear road 1s, lock player to lane 1 ─────────────
+    // ── Phase 0: Setup — clear road, lock player to lane 1 ─────────────────
+    // Track mode first-run: wait 180 frames (3s) so player can feel the drag mechanic
+    // before enemies appear. Swipe mode uses the original 60-frame delay.
     if(tutPhase===0){
       player.lane=1;player.targetX=LANE_XS[1];
-      if(tutPhaseTimer>=60){
+      const _p0delay = (playMode==='track' && !_mode2TutShown) ? 180 : 60;
+      if(tutPhaseTimer>=_p0delay){
         tutPhase=1;tutPhaseTimer=0;
         // Enemies: lane 1 at y=-200, lane 0 at y=-160 (40px gap)
         const _te1=_ENEMY_POOL._get();
@@ -1991,11 +1995,14 @@ function update(dt){
     }
 
     // ── Phase 2: Enemy l3 (y=-400), enemy l2 (y=-430), manhole l0 + stone l1 (y=-460) ──
-    //   2 coins in lane 1 at y=-400 and y=-430 guide player to correct lane.
-    //   Full speed throughout. Crash (incl. jumping over cars) → rewind.
+    //   Breathing gap: 70 frames of clear road after enemies pass before obstacle spawns.
+    //   Slowdown: 0.65× speed when jump obstacle is visible (gives reaction time).
+    //   Crash (incl. jumping over cars) → rewind.
     else if(tutPhase===2){
       if(!tutPhase2Spawned){
         tutPhase2Spawned=true;
+        tutPhase2BreathTimer=70; // breathing gap before obstacles appear
+        tutObstSlowActive=false;
         // Enemy car lane 3 — arrives first (least negative y)
         const _tej2=_ENEMY_POOL._get();
         _tej2.lane=3;_tej2.y=-400;_tej2.nmChecked=false;_tej2.speedMult=1.0;_tej2._perfectDodge=false;_tej2._tutSmashed=false;
@@ -2004,20 +2011,53 @@ function update(dt){
         const _tej1=_ENEMY_POOL._get();
         _tej1.lane=2;_tej1.y=-430;_tej1.nmChecked=false;_tej1.speedMult=1.0;_tej1._perfectDodge=false;_tej1._tutSmashed=false;
         tutJumpEnemyRef1=_tej1;
-        // Manhole lane 0 + stone lane 1 — both 30px above enemy l2
+        // NOTE: obstacles (manhole + stone) are NOT spawned yet — they wait for breath timer
+      }
+      if(tutCrashPopTimer>0) tutCrashPopTimer-=dt;
+
+      // ── Breathing gap: count down before obstacles appear ──
+      if(tutPhase2BreathTimer>0){
+        tutPhase2BreathTimer-=dt;
+        tutSpeedTarget=1.0;
+        // Once enemies are past the player (or gone), start counting the breath
+        const _enemiesGone=(!tutJumpEnemyRef1||!tutJumpEnemyRef1._active||tutJumpEnemyRef1.y>player.y+60)&&
+                           (!tutJumpEnemyRef2||!tutJumpEnemyRef2._active||tutJumpEnemyRef2.y>player.y+60);
+        if(!_enemiesGone) tutPhase2BreathTimer=70; // reset timer until enemies clear
+      } else if(!tutObstRef && !tutJumpObstRef2){
+        // Breath is done and obstacles not yet spawned — spawn them now
         const _tm=_OBST_POOL._get();_tm.lane=0;_tm.y=-460;_tm.type='manhole';_tm.nmChecked=false;_tm._tutSmashed=false;
         tutJumpObstRef2=_tm;
         const _ts=_OBST_POOL._get();_ts.lane=1;_ts.y=-460;_ts.type='stone';_ts.nmChecked=false;_ts._tutSmashed=false;
         tutObstRef=_ts;
         // 2 coins in lane 1 guiding player to jump lane:
-        // coin A 60px before stone (y=-460+60=-400), coin B 30px before stone (y=-430)
         const _gca=_COIN_POOL._get();_gca.lane=1;_gca.x=LANE_XS[1];_gca.y=-400;_gca.id=coinIdCounter++;
         const _gcb=_COIN_POOL._get();_gcb.lane=1;_gcb.x=LANE_XS[1];_gcb.y=-430;_gcb.id=coinIdCounter++;
+        // Track mode: show jump gesture overlay for 2 seconds before obstacle arrives
+        if(playMode==='track') tutTrackJumpOverlayTimer=120;
       }
-      if(tutCrashPopTimer>0) tutCrashPopTimer-=dt;
+
+      // ── Speed slowdown: 0.65× when jump obstacle is within the slow zone ──
+      if(tutObstRef&&tutObstRef._active){
+        const _distToObst=tutObstRef.y-player.y; // negative = above player
+        if(_distToObst<100&&_distToObst>-200){
+          // Obstacle is between 200px above and 100px below player — slow down
+          tutSpeedTarget=0.65;
+          tutObstSlowActive=true;
+        } else if(tutObstSlowActive&&_distToObst<0){
+          // Was slow, obstacle now well above — restore speed
+          tutSpeedTarget=1.0;tutObstSlowActive=false;
+        }
+      } else {
+        tutObstSlowActive=false;
+        // Only reset to full speed if in breathing gap phase (enemies still coming)
+        if(tutPhase2BreathTimer>0||!tutObstRef) tutSpeedTarget=1.0;
+      }
+      if(tutTrackJumpOverlayTimer>0) tutTrackJumpOverlayTimer-=dt;
+
       // Advance when player jumps from lane 0 or 1 (correct jump lane)
       if(player.jumping&&(player.lane===0||player.lane===1)){
         tutObstRef=null;tutJumpObstRef2=null;tutJumpEnemyRef1=null;tutJumpEnemyRef2=null;
+        tutObstSlowActive=false;tutTrackJumpOverlayTimer=0;
         tutPhase=3;tutPhaseTimer=0;tutP3Spawned=false;
       }
     }

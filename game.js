@@ -1027,6 +1027,12 @@ function _saveNitroTutDone(){
 // ══════════════════════════════════════════
 // Phase 2: jump blockade spawned flag (prevents double-spawn after rewind)
 let tutPhase2Spawned = false;
+// Phase 2: breathing room — frames of clear road after move-prompt before obstacle spawns
+let tutPhase2BreathTimer = 0;   // counts from 70 → 0 before obstacle group spawns
+// Phase 2: slow-down flag — true when jump obstacle is within the visible slow zone
+let tutObstSlowActive = false;
+// Track mode first-run: overlay shown before Phase 2 jump obstacle arrives
+let tutTrackJumpOverlayTimer = 0; // counts down from 120 (2s); overlay shown while > 0
 
 // Tutorial rewind system — when player crashes in phases 1-3, game reverses at 2x speed
 let tutRewindActive  = false;  // true during the 1.5s rewind animation
