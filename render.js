@@ -5757,12 +5757,8 @@ function drawHowTo(){
   const pages=[
     {
       col:'#fbbf24', icon:'🎮', title:'CONTROLS',
-      lines:[
-        {icon:'←→', text:'Swipe left or right anywhere on screen to change lane'},
-        {icon:'↑',  text:'Swipe up anywhere on screen to jump over obstacles'},
-        {icon:'👆', text:'Tap left half of screen = move left  ·  Tap right half = move right'},
-        {icon:'💡', text:'Tapping the top third of screen also triggers a jump'},
-      ]
+      // controls page uses custom two-section rendering — lines array unused
+      lines:[]
     },
     {
       col:'#4ade80', icon:'🎯', title:'OBJECTIVE',
@@ -5835,25 +5831,230 @@ function drawHowTo(){
   ctx.beginPath();ctx.moveTo(CX+16,CY+56);ctx.lineTo(CX+CW-16,CY+56);ctx.stroke();
   ctx.restore();
 
-  // ── Page title ──
-  const contentTop=CY+62;
+  // ── Nav buttons (always drawn, outside clip) ──
+  const navY=CY+cardH-70;
+  ctx.save();ctx.strokeStyle=col+'22';ctx.lineWidth=1;
+  ctx.beginPath();ctx.moveTo(CX+16,navY);ctx.lineTo(CX+CW-16,navY);ctx.stroke();
+  ctx.restore();
+
+  const lbW=64,lbH=34,lbX=CX+16,lbY=navY+10;
+  const hasLeft=howtoPage>0;
   ctx.save();
-  // Big central icon
-  const igx=W/2,igy=contentTop+28;
+  ctx.fillStyle=hasLeft?'rgba(20,30,70,0.88)':'rgba(15,20,40,0.40)';
+  rr(lbX,lbY,lbW,lbH,9);ctx.fill();
+  ctx.strokeStyle=hasLeft?'rgba(99,179,237,0.70)':'rgba(99,179,237,0.20)';ctx.lineWidth=1.3;
+  rr(lbX,lbY,lbW,lbH,9);ctx.stroke();
+  ctx.textAlign='center';ctx.textBaseline='middle';
+  ctx.font="bold 12px 'Orbitron',sans-serif";
+  ctx.fillStyle=hasLeft?'#93c5fd':'rgba(147,197,253,0.28)';
+  ctx.fillText('◀',lbX+lbW/2,lbY+lbH/2);
+  ctx.restore();
+
+  const rbW=64,rbH=34,rbX=CX+CW-rbW-16,rbY=navY+10;
+  const hasRight=howtoPage<pages.length-1;
+  ctx.save();
+  ctx.fillStyle=hasRight?'rgba(20,30,70,0.88)':'rgba(15,20,40,0.40)';
+  rr(rbX,rbY,rbW,rbH,9);ctx.fill();
+  ctx.strokeStyle=hasRight?'rgba(99,179,237,0.70)':'rgba(99,179,237,0.20)';ctx.lineWidth=1.3;
+  rr(rbX,rbY,rbW,rbH,9);ctx.stroke();
+  ctx.textAlign='center';ctx.textBaseline='middle';
+  ctx.font="bold 12px 'Orbitron',sans-serif";
+  ctx.fillStyle=hasRight?'#93c5fd':'rgba(147,197,253,0.28)';
+  ctx.fillText('▶',rbX+rbW/2,rbY+rbH/2);
+  ctx.restore();
+
+  const bbW=100,bbH=34,bbX=W/2-bbW/2,bbY=navY+10;
+  ctx.save();
+  ctx.fillStyle='rgba(20,30,80,0.88)';rr(bbX,bbY,bbW,bbH,9);ctx.fill();
+  ctx.strokeStyle='rgba(99,179,237,0.55)';ctx.lineWidth=1.2;rr(bbX,bbY,bbW,bbH,9);ctx.stroke();
+  ctx.textAlign='center';ctx.textBaseline='middle';
+  ctx.font="bold 9px 'Orbitron',sans-serif";ctx.fillStyle='#93c5fd';
+  ctx.fillText('← BACK',W/2,bbY+bbH/2);
+  ctx.restore();
+
+  // Footer hint
+  ctx.save();ctx.textAlign='center';ctx.textBaseline='bottom';
+  ctx.font="600 8px 'Rajdhani',sans-serif";ctx.fillStyle='rgba(100,116,139,0.55)';
+  ctx.fillText('page '+(howtoPage+1)+' / '+pages.length,W/2,CY+cardH-4);
+  ctx.restore();
+
+  // ── Scrollable content area ──
+  const contentTop=CY+62;
+  const contentBottom=navY-4;
+  const contentH=contentBottom-contentTop;
+
+  // ── CONTROLS page: two-section layout with scroll ──
+  if(howtoPage===0){
+    const SWIPE_COL='#38bdf8';
+    const TRACK_COL='#f59e0b';
+    const isSwipe=(playMode==='swipe');
+
+    // Define rows for each section — icon (emoji/symbol) + short label
+    const swipeRows=[
+      {icon:'←→', label:'Swipe left / right to change lane'},
+      {icon:'↑',  label:'Swipe up to jump'},
+      {icon:'◀▶', label:'Tap left or right half to steer'},
+      {icon:'⬆',  label:'Tap top third to jump'},
+    ];
+    const trackRows=[
+      {icon:'🖐',  label:'Hold & drag to steer across lanes'},
+      {icon:'↔',  label:'Finger position = lane'},
+      {icon:'👆👆',label:'Double-tap to jump'},
+      {icon:'↑',  label:'Swipe up to jump'},
+    ];
+
+    // Row geometry
+    const rowH=36, rowGap=4;
+    const bsz=28; // icon pill size
+    const secLabelH=22;
+    const secGap=10;
+    const totalContentNeeded=secLabelH+swipeRows.length*(rowH+rowGap)+secGap+secLabelH+trackRows.length*(rowH+rowGap);
+    const maxScroll=Math.max(0,totalContentNeeded-contentH);
+    window._howToMaxScroll=maxScroll; // expose to game.js scroll handlers
+
+    // Clip to content area
+    ctx.save();
+    ctx.beginPath();ctx.rect(CX+6,contentTop,CW-12,contentH);ctx.clip();
+
+    let cy=contentTop-howToScrollY;
+
+    // ── SWIPE MODE section label ──
+    const swipeActive=isSwipe;
+    ctx.save();
+    // Section pill background
+    const slW=CW-32,slX=CX+16;
+    ctx.fillStyle=swipeActive?'rgba(56,189,248,0.14)':'rgba(56,189,248,0.06)';
+    rr(slX,cy,slW,secLabelH,6);ctx.fill();
+    if(swipeActive){ctx.shadowColor=SWIPE_COL;ctx.shadowBlur=10;}
+    ctx.strokeStyle=swipeActive?SWIPE_COL+'cc':SWIPE_COL+'44';ctx.lineWidth=1.2;
+    rr(slX,cy,slW,secLabelH,6);ctx.stroke();ctx.shadowBlur=0;
+    // Mode label
+    ctx.font="900 9px 'Orbitron',sans-serif";
+    ctx.textAlign='center';ctx.textBaseline='middle';
+    ctx.fillStyle=swipeActive?SWIPE_COL:'rgba(56,189,248,0.5)';
+    ctx.fillText('👆  SWIPE MODE'+(swipeActive?' ◀ ACTIVE':''),W/2,cy+secLabelH/2);
+    ctx.restore();
+    cy+=secLabelH+4;
+
+    // Swipe rows
+    swipeRows.forEach((row,i)=>{
+      const rx=CX+16,ry=cy,rw=CW-32;
+      ctx.save();
+      // Row bg — alternate subtle tint
+      ctx.globalAlpha=i%2===0?0.07:0.03;
+      ctx.fillStyle=SWIPE_COL;
+      rr(rx,ry,rw,rowH,6);ctx.fill();
+      ctx.globalAlpha=1;
+
+      // Icon pill
+      const bx=rx+4,by=ry+rowH/2-bsz/2;
+      ctx.fillStyle=SWIPE_COL+'33';rr(bx,by,bsz,bsz,6);ctx.fill();
+      ctx.strokeStyle=SWIPE_COL+'99';ctx.lineWidth=1.2;
+      ctx.shadowColor=SWIPE_COL;ctx.shadowBlur=6;
+      rr(bx,by,bsz,bsz,6);ctx.stroke();ctx.shadowBlur=0;
+      ctx.font="13px -apple-system,'Segoe UI Emoji','Apple Color Emoji',sans-serif";
+      ctx.textAlign='center';ctx.textBaseline='middle';
+      ctx.fillStyle='#fff';
+      ctx.fillText(row.icon,bx+bsz/2,by+bsz/2);
+
+      // Label
+      ctx.font="700 11px 'Rajdhani',sans-serif";
+      ctx.textAlign='left';ctx.textBaseline='middle';
+      ctx.fillStyle='rgba(226,232,240,0.92)';
+      ctx.fillText(row.label,rx+bsz+12,ry+rowH/2);
+      ctx.restore();
+      cy+=rowH+rowGap;
+    });
+
+    cy+=secGap;
+
+    // ── TRACK MODE section label ──
+    const trackActive=!isSwipe;
+    ctx.save();
+    const tlW=CW-32,tlX=CX+16;
+    ctx.fillStyle=trackActive?'rgba(245,158,11,0.14)':'rgba(245,158,11,0.06)';
+    rr(tlX,cy,tlW,secLabelH,6);ctx.fill();
+    if(trackActive){ctx.shadowColor=TRACK_COL;ctx.shadowBlur=10;}
+    ctx.strokeStyle=trackActive?TRACK_COL+'cc':TRACK_COL+'44';ctx.lineWidth=1.2;
+    rr(tlX,cy,tlW,secLabelH,6);ctx.stroke();ctx.shadowBlur=0;
+    ctx.font="900 9px 'Orbitron',sans-serif";
+    ctx.textAlign='center';ctx.textBaseline='middle';
+    ctx.fillStyle=trackActive?TRACK_COL:'rgba(245,158,11,0.5)';
+    ctx.fillText('🖐  TRACK MODE'+(trackActive?' ◀ ACTIVE':''),W/2,cy+secLabelH/2);
+    ctx.restore();
+    cy+=secLabelH+4;
+
+    // Track rows
+    trackRows.forEach((row,i)=>{
+      const rx=CX+16,ry=cy,rw=CW-32;
+      ctx.save();
+      ctx.globalAlpha=i%2===0?0.07:0.03;
+      ctx.fillStyle=TRACK_COL;
+      rr(rx,ry,rw,rowH,6);ctx.fill();
+      ctx.globalAlpha=1;
+
+      const bx=rx+4,by=ry+rowH/2-bsz/2;
+      ctx.fillStyle=TRACK_COL+'33';rr(bx,by,bsz,bsz,6);ctx.fill();
+      ctx.strokeStyle=TRACK_COL+'99';ctx.lineWidth=1.2;
+      ctx.shadowColor=TRACK_COL;ctx.shadowBlur=6;
+      rr(bx,by,bsz,bsz,6);ctx.stroke();ctx.shadowBlur=0;
+      ctx.font="13px -apple-system,'Segoe UI Emoji','Apple Color Emoji',sans-serif";
+      ctx.textAlign='center';ctx.textBaseline='middle';
+      ctx.fillStyle='#fff';
+      ctx.fillText(row.icon,bx+bsz/2,by+bsz/2);
+
+      ctx.font="700 11px 'Rajdhani',sans-serif";
+      ctx.textAlign='left';ctx.textBaseline='middle';
+      ctx.fillStyle='rgba(226,232,240,0.92)';
+      ctx.fillText(row.label,rx+bsz+12,ry+rowH/2);
+      ctx.restore();
+      cy+=rowH+rowGap;
+    });
+
+    ctx.restore(); // end clip
+
+    // ── Scroll fade-out gradient at bottom edge when more content below ──
+    if(maxScroll>0 && howToScrollY<maxScroll-2){
+      ctx.save();
+      const fadeH=32;
+      const fadeGrad=ctx.createLinearGradient(0,contentBottom-fadeH,0,contentBottom);
+      fadeGrad.addColorStop(0,'rgba(6,9,22,0)');
+      fadeGrad.addColorStop(1,'rgba(6,9,22,0.95)');
+      ctx.fillStyle=fadeGrad;
+      ctx.fillRect(CX+6,contentBottom-fadeH,CW-12,fadeH);
+      // Scroll hint arrow
+      const arrowAlpha=0.4+0.3*Math.sin(frameCount*0.12);
+      ctx.globalAlpha=arrowAlpha;
+      ctx.font="bold 11px 'Orbitron',sans-serif";
+      ctx.textAlign='center';ctx.textBaseline='middle';
+      ctx.fillStyle='rgba(148,163,184,0.9)';
+      ctx.fillText('▼ scroll',W/2,contentBottom-8);
+      ctx.restore();
+    }
+
+    return; // controls page done — skip generic line renderer below
+  }
+
+  // ── Generic pages (Objective, Score Faster, Earn Coins, Survive Tips) ──
+  // Reset max scroll for non-controls pages
+  window._howToMaxScroll=0;
+
+  // Page title
+  const contentTopG=CY+62;
+  ctx.save();
+  const igx=W/2,igy=contentTopG+28;
   ctx.globalAlpha=1;
   ctx.font="44px -apple-system,'Segoe UI Emoji','Apple Color Emoji',sans-serif";
   ctx.textAlign='center';ctx.textBaseline='middle';
   ctx.fillStyle='#ffffff';
   ctx.fillText(page.icon,igx,igy);
-  // Title
   ctx.font="900 20px 'Orbitron',impact,sans-serif";
   ctx.textBaseline='middle';
   ctx.fillStyle=col;ctx.shadowColor=col;ctx.shadowBlur=18;
-  ctx.fillText(page.title,W/2,contentTop+70);
+  ctx.fillText(page.title,W/2,contentTopG+70);
   ctx.shadowBlur=0;
-  // Divider line under title
   ctx.strokeStyle=col+'44';ctx.lineWidth=1;
-  ctx.beginPath();ctx.moveTo(CX+32,contentTop+85);ctx.lineTo(CX+CW-32,contentTop+85);ctx.stroke();
+  ctx.beginPath();ctx.moveTo(CX+32,contentTopG+85);ctx.lineTo(CX+CW-32,contentTopG+85);ctx.stroke();
   ctx.restore();
 
   // ── Word-wrap helper ──
@@ -5871,14 +6072,13 @@ function drawHowTo(){
   }
 
   // ── Bullet lines ──
-  const lineStart=contentTop+96;
-  const lineH=14;       // px per text line
-  const rowPad=10;      // vertical padding inside each row
-  const bsz=30;         // icon bubble size
-  const textStartX=CX+18+bsz+10; // x where text begins
-  const textMaxW=CW-18-bsz-10-14; // max text width before right edge
+  const lineStart=contentTopG+96;
+  const lineH=14;
+  const rowPad=10;
+  const bsz=30;
+  const textStartX=CX+18+bsz+10;
+  const textMaxW=CW-18-bsz-10-14;
 
-  // Pre-measure each item to get row heights
   ctx.font="600 11px 'Rajdhani',sans-serif";
   const rowData=page.lines.map(ln=>{
     const wrappedLines=wrapText(ln.text,textMaxW);
@@ -5889,28 +6089,23 @@ function drawHowTo(){
   let curY=lineStart;
   rowData.forEach(({ln,wrappedLines,rowH},i)=>{
     ctx.save();
-    // Row background
     ctx.globalAlpha=i%2===0?0.08:0.04;
     ctx.fillStyle='#fff';
     rr(CX+10,curY,CW-20,rowH,6);ctx.fill();
     ctx.globalAlpha=1;
 
-    // Icon bubble — vivid fill so it's clearly visible
     const bx=CX+18, by=curY+rowH/2-bsz/2;
-    // Bubble background — solid tinted fill
     ctx.fillStyle=col+'44';rr(bx,by,bsz,bsz,7);ctx.fill();
     ctx.strokeStyle=col+'cc';ctx.lineWidth=1.5;
     ctx.shadowColor=col;ctx.shadowBlur=8;
     rr(bx,by,bsz,bsz,7);ctx.stroke();
     ctx.shadowBlur=0;
-    // Emoji icon — explicit white fill + emoji font stack
     ctx.font="17px -apple-system,'Segoe UI Emoji','Apple Color Emoji',sans-serif";
     ctx.textAlign='center';ctx.textBaseline='middle';
     ctx.fillStyle='#ffffff';
     ctx.globalAlpha=1;
     ctx.fillText(ln.icon,bx+bsz/2,by+bsz/2);
 
-    // Text lines — properly wrapped, fully opaque
     ctx.font="600 11px 'Rajdhani',sans-serif";
     ctx.textAlign='left';ctx.textBaseline='top';
     ctx.fillStyle='rgba(226,232,240,1)';
@@ -5923,56 +6118,6 @@ function drawHowTo(){
     ctx.restore();
     curY+=rowH+4;
   });
-
-  // ── Left / Right nav buttons ──
-  const navY=CY+cardH-70;
-  ctx.save();ctx.strokeStyle=col+'22';ctx.lineWidth=1;
-  ctx.beginPath();ctx.moveTo(CX+16,navY);ctx.lineTo(CX+CW-16,navY);ctx.stroke();
-  ctx.restore();
-
-  // Left arrow button
-  const lbW=64,lbH=34,lbX=CX+16,lbY=navY+10;
-  const hasLeft=howtoPage>0;
-  ctx.save();
-  ctx.fillStyle=hasLeft?'rgba(20,30,70,0.88)':'rgba(15,20,40,0.40)';
-  rr(lbX,lbY,lbW,lbH,9);ctx.fill();
-  ctx.strokeStyle=hasLeft?'rgba(99,179,237,0.70)':'rgba(99,179,237,0.20)';ctx.lineWidth=1.3;
-  rr(lbX,lbY,lbW,lbH,9);ctx.stroke();
-  ctx.textAlign='center';ctx.textBaseline='middle';
-  ctx.font="bold 12px 'Orbitron',sans-serif";
-  ctx.fillStyle=hasLeft?'#93c5fd':'rgba(147,197,253,0.28)';
-  ctx.fillText('◀',lbX+lbW/2,lbY+lbH/2);
-  ctx.restore();
-
-  // Right arrow button
-  const rbW=64,rbH=34,rbX=CX+CW-rbW-16,rbY=navY+10;
-  const hasRight=howtoPage<pages.length-1;
-  ctx.save();
-  ctx.fillStyle=hasRight?'rgba(20,30,70,0.88)':'rgba(15,20,40,0.40)';
-  rr(rbX,rbY,rbW,rbH,9);ctx.fill();
-  ctx.strokeStyle=hasRight?'rgba(99,179,237,0.70)':'rgba(99,179,237,0.20)';ctx.lineWidth=1.3;
-  rr(rbX,rbY,rbW,rbH,9);ctx.stroke();
-  ctx.textAlign='center';ctx.textBaseline='middle';
-  ctx.font="bold 12px 'Orbitron',sans-serif";
-  ctx.fillStyle=hasRight?'#93c5fd':'rgba(147,197,253,0.28)';
-  ctx.fillText('▶',rbX+rbW/2,rbY+rbH/2);
-  ctx.restore();
-
-  // Back button — center
-  const bbW=100,bbH=34,bbX=W/2-bbW/2,bbY=navY+10;
-  ctx.save();
-  ctx.fillStyle='rgba(20,30,80,0.88)';rr(bbX,bbY,bbW,bbH,9);ctx.fill();
-  ctx.strokeStyle='rgba(99,179,237,0.55)';ctx.lineWidth=1.2;rr(bbX,bbY,bbW,bbH,9);ctx.stroke();
-  ctx.textAlign='center';ctx.textBaseline='middle';
-  ctx.font="bold 9px 'Orbitron',sans-serif";ctx.fillStyle='#93c5fd';
-  ctx.fillText('← BACK',W/2,bbY+bbH/2);
-  ctx.restore();
-
-  // Footer hint
-  ctx.save();ctx.textAlign='center';ctx.textBaseline='bottom';
-  ctx.font="600 8px 'Rajdhani',sans-serif";ctx.fillStyle='rgba(100,116,139,0.55)';
-  ctx.fillText('page '+(howtoPage+1)+' / '+pages.length,W/2,CY+cardH-4);
-  ctx.restore();
 }
 
 function drawRevive(){

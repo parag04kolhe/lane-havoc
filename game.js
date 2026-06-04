@@ -534,7 +534,7 @@ function saveLifetimeStats(){
 }
 
 let showStats=false; // toggle stats overlay on intro screen
-let playMode=loadLS('rr_play_mode','track'); // 'swipe' or 'track'
+let playMode=loadLS('rr_play_mode','swipe'); // 'swipe' or 'track'
 let trackSensitivity=loadLS('rr_track_sens','high'); // 'high' or 'low' (track mode only)
 let _mode2TutShown=loadLS('rr_tut2_shown',false); // mode 2 first-run hints shown
 let _trackSensPopup=false; // sensitivity popup removed — high sensitivity is the fixed default
@@ -875,6 +875,7 @@ let _splashMenuBtns=null;    // button rects drawn by drawSplash overlay
 let _engineBtnRect=null;     // circle for ENGINE START button hit-detection
 let introScrollY=0;          // scroll offset for object guide page
 let howtoPage=0;             // current page index 0-4 for How To Play slideshow
+let howToScrollY=0;          // scroll offset for controls page content
 
 // ── NEW FEATURE VARS ──────────────────────────────────────
 // Oil slick / speed bump timers
@@ -1257,8 +1258,8 @@ document.addEventListener('keydown',e=>{
   if(e.key==='Escape'&&(gst===ST.SHOP||gst===ST.HOWTO||gst===ST.STATS)){gst===ST.SHOP?gst=preShop:gst=ST.SPLASH;}
   // How-to page navigation with arrow keys
   if(gst===ST.HOWTO){
-    if(e.key==='ArrowRight'&&howtoPage<4){howtoPage++;snd('switch');}
-    if(e.key==='ArrowLeft'&&howtoPage>0){howtoPage--;snd('switch');}
+    if(e.key==='ArrowRight'&&howtoPage<4){howtoPage++;howToScrollY=0;snd('switch');}
+    if(e.key==='ArrowLeft'&&howtoPage>0){howtoPage--;howToScrollY=0;snd('switch');}
   }
 });
 
@@ -1344,8 +1345,8 @@ canvas.addEventListener('mousedown', e=>{
     const _CW=352,_CX=(W-_CW)/2,_CY=10,_cardH=H-20;
     const _navY=_CY+_cardH-70;
     const _navBY=_navY+10,_navBH=34;
-    if(relX>=_CX+16&&relX<=_CX+80&&relY>=_navBY&&relY<=_navBY+_navBH){if(howtoPage>0){howtoPage--;snd('switch');}return;}
-    if(relX>=_CX+_CW-80&&relX<=_CX+_CW-16&&relY>=_navBY&&relY<=_navBY+_navBH){if(howtoPage<4){howtoPage++;snd('switch');}return;}
+    if(relX>=_CX+16&&relX<=_CX+80&&relY>=_navBY&&relY<=_navBY+_navBH){if(howtoPage>0){howtoPage--;howToScrollY=0;snd('switch');}return;}
+    if(relX>=_CX+_CW-80&&relX<=_CX+_CW-16&&relY>=_navBY&&relY<=_navBY+_navBH){if(howtoPage<4){howtoPage++;howToScrollY=0;snd('switch');}return;}
     if(relX>=W/2-50&&relX<=W/2+50&&relY>=_navBY&&relY<=_navBY+_navBH){gst=ST.SPLASH;return;}
     return;
   }
@@ -1362,7 +1363,7 @@ canvas.addEventListener('mousedown', e=>{
     if(hit(b.guide))     { initAC();gst=ST.INTRO;return; }
     if(hit(b.stats))     { initAC();gst=ST.STATS;return; }
     if(hit(b.shop))      { doShop();return; }
-    if(hit(b.howto))     { initAC();gst=ST.HOWTO;return; }
+    if(hit(b.howto))     { initAC();howToScrollY=0;gst=ST.HOWTO;return; }
     if(hit(b.modeSwipe)){playMode='swipe';saveLS('rr_play_mode','swipe');snd('switch');return;}
     if(hit(b.modeTrack)){playMode='track';saveLS('rr_play_mode','track');snd('switch');return;}
     return;
@@ -1383,7 +1384,7 @@ canvas.addEventListener('mousedown', e=>{
     }
     // HOWTO (bottom-right): CX+CW-86, w=76
     if(relX>=_iCX+_iCW-86&&relX<=_iCX+_iCW-10&&relY>=_iBackY&&relY<=_iBackY+_iBtnH){
-      gst=ST.HOWTO;return;
+      howToScrollY=0;gst=ST.HOWTO;return;
     }
     // PLAY (above footer): W/2-55, w=110, h=34
     const _iPbY=_iFootY-56;
@@ -1496,6 +1497,12 @@ canvas.addEventListener('touchmove', e=>{
     lbScrollY=clamp(lbScrollY-dy,0,maxScroll);
     tsx=t.clientX;tsy=t.clientY;
   }
+  // How-to controls page scroll
+  if(gst===ST.HOWTO && howtoPage===0){
+    const dy=(t.clientY-tsy)*(H/canvas.getBoundingClientRect().height);
+    howToScrollY=clamp(howToScrollY-dy,0,window._howToMaxScroll||0);
+    tsx=t.clientX;tsy=t.clientY;
+  }
   // ── Finger Track mode: update active lane from finger position ──
   if(playMode==='track'&&_ftActiveLane!==-1&&!gamePaused&&
      (gst===ST.PLAYING||gst===ST.RESPAWNING||gst===ST.CRASHING)){
@@ -1512,6 +1519,10 @@ canvas.addEventListener('wheel', e=>{
   if(gst===ST.INTRO){
     e.preventDefault();
     introScrollY=clamp(introScrollY+e.deltaY*0.5,0,Math.max(0,16*44-300));
+  }
+  if(gst===ST.HOWTO && howtoPage===0){
+    e.preventDefault();
+    howToScrollY=clamp(howToScrollY+e.deltaY*0.5,0,window._howToMaxScroll||0);
   }
 },{passive:false});
 
@@ -1584,12 +1595,12 @@ canvas.addEventListener('touchend', e=>{
       const _navBY=_navY+10, _navBH=34;
       // Left arrow: lbX=CX+16, lbW=64
       if(relX>=_CX+16 && relX<=_CX+80 && relY>=_navBY && relY<=_navBY+_navBH){
-        if(howtoPage>0){howtoPage--;snd('switch');}
+        if(howtoPage>0){howtoPage--;howToScrollY=0;snd('switch');}
         e.stopPropagation();return;
       }
       // Right arrow: rbX=CX+CW-80, rbW=64
       if(relX>=_CX+_CW-80 && relX<=_CX+_CW-16 && relY>=_navBY && relY<=_navBY+_navBH){
-        if(howtoPage<4){howtoPage++;snd('switch');}
+        if(howtoPage<4){howtoPage++;howToScrollY=0;snd('switch');}
         e.stopPropagation();return;
       }
       // Back button (center): bbX=W/2-50, bbW=100
@@ -1598,8 +1609,8 @@ canvas.addEventListener('touchend', e=>{
       }
       // Swipe left = next page, swipe right = prev page
       if(Math.abs(gdx)>SWIPE){
-        if(gdx<0&&howtoPage<4){howtoPage++;snd('switch');}
-        else if(gdx>0&&howtoPage>0){howtoPage--;snd('switch');}
+        if(gdx<0&&howtoPage<4){howtoPage++;howToScrollY=0;snd('switch');}
+        else if(gdx>0&&howtoPage>0){howtoPage--;howToScrollY=0;snd('switch');}
       }
     }
     e.stopPropagation();return;
@@ -1638,7 +1649,7 @@ canvas.addEventListener('touchend', e=>{
       if(hit(b.guide))     { initAC();gst=ST.INTRO;e.stopPropagation();return; }
       if(hit(b.stats))     { initAC();gst=ST.STATS;e.stopPropagation();return; }
       if(hit(b.shop))      { doShop();e.stopPropagation();return; }
-      if(hit(b.howto))     { initAC();gst=ST.HOWTO;e.stopPropagation();return; }
+      if(hit(b.howto))     { initAC();howToScrollY=0;gst=ST.HOWTO;e.stopPropagation();return; }
       if(hit(b.modeSwipe)){playMode='swipe';saveLS('rr_play_mode','swipe');snd('switch');e.stopPropagation();return;}
       if(hit(b.modeTrack)){playMode='track';saveLS('rr_play_mode','track');snd('switch');e.stopPropagation();return;}
       e.stopPropagation();return;
@@ -1655,7 +1666,7 @@ canvas.addEventListener('touchend', e=>{
       }
       // HOWTO button — bottom-right: ibX=290, ibY=_backY, ibW=76, ibH=22
       if(relX>=286 && relX<=372 && relY>=_backY && relY<=_backY+22){
-        gst=ST.HOWTO;e.stopPropagation();return;
+        howToScrollY=0;gst=ST.HOWTO;e.stopPropagation();return;
       }
       // STATS button — bottom-center: sbX=W/2-38=162, sbW=76
       if(relX>=158 && relX<=242 && relY>=_backY && relY<=_backY+22){
